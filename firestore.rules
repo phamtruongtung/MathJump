@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // Hồ sơ công khai: tên, ảnh, mã kết bạn, kỷ lục. Ai đăng nhập cũng xem được,
+    // chỉ chủ tài khoản được sửa.
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+
+      match /friends/{fid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        // Mình tự thêm bạn, hoặc người kia ghi vào danh sách của mình khi
+        // họ ĐỒNG Ý lời mời mình đã gửi.
+        allow create, update: if signedIn() && (
+          request.auth.uid == uid ||
+          (request.auth.uid == fid &&
+            exists(/databases/$(database)/documents/friendRequests/$(fid)/incoming/$(uid)))
+        );
+        allow delete: if signedIn() && (request.auth.uid == uid || request.auth.uid == fid);
+      }
+    }
+
+    match /friendCodes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /friendRequests/{toUid}/incoming/{fromUid} {
+      allow read, delete: if signedIn() &&
+        (request.auth.uid == toUid || request.auth.uid == fromUid);
+      allow create, update: if signedIn() &&
+        request.auth.uid == fromUid && fromUid != toUid;
+    }
+  }
+}

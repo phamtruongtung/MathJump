@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Math Jump – Preview</title>
+<style>
+  :root{--ink:#3B3355;--cream:#FFF9EC;--sun:#FFD43B;--orange:#FF9F43;--pink:#FF7EB3;--purple:#9775FA;--blue:#4DABF7;--green:#40C057;--red:#FA5252;--grass:#82C91E;--dirt:#B07A4F;--fb:#1877F2}
+  *{box-sizing:border-box;font-family:system-ui,"Segoe UI",Roboto,sans-serif}
+  body{margin:0;background:#e9ecef;display:flex;gap:28px;justify-content:center;align-items:flex-start;padding:24px;flex-wrap:wrap;color:var(--ink)}
+  .phone{width:360px;height:740px;border-radius:40px;border:10px solid #222;overflow:hidden;position:relative;background:linear-gradient(#8FD3FF,#D9F2FF 55%,#FFF6E0)}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;padding:18px}
+  .screen.on{display:flex}
+  .cloud{position:absolute;opacity:.75;pointer-events:none}
+  .title{font-size:44px;font-weight:900;color:var(--purple);text-shadow:3px 3px 0 #fff;text-align:center;margin:0}
+  .btn{border:2px solid rgba(255,255,255,.35);border-radius:22px;color:#fff;font-weight:900;font-size:18px;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;user-select:none;box-shadow:0 6px 0 var(--shade,rgba(0,0,0,.25));transition:transform .06s,box-shadow .06s;margin-bottom:6px}
+  .btn:active{transform:translateY(6px);box-shadow:0 0 0 var(--shade)}
+  .pill{background:var(--c);color:#fff;font-weight:900;border:2px solid #fff;border-radius:30px;padding:5px 14px;font-size:17px;display:inline-block}
+  .card{background:#fff;border-radius:22px;box-shadow:0 4px 10px rgba(0,0,0,.13);padding:14px}
+  .bounce{animation:b .7s ease-in-out infinite alternate;display:inline-block}
+  @keyframes b{to{transform:translateY(-16px)}}
+  .lang{align-self:flex-end;background:rgba(255,255,255,.7);border-radius:24px;padding:4px;display:flex;gap:4px}
+  .lang span{padding:7px 13px;border-radius:20px;font-weight:900;cursor:pointer;background:#fff}
+  .lang span.on{background:var(--orange);color:#fff}
+  .timer{height:18px;background:#fff;border-radius:10px;overflow:hidden;flex:1}
+  .timer div{height:100%;border-radius:10px}
+  .stage{flex:5;margin:12px 0;border-radius:24px;background:rgba(255,255,255,.35);position:relative;overflow:hidden}
+  .eq{height:84px;display:flex;align-items:center;justify-content:center;gap:10px;font-size:42px;font-weight:900}
+  .slot{padding:0 16px;border-radius:16px;border:3px solid rgba(59,51,85,.15);background:var(--sun)}
+  .grid{flex:6;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:16px 0 10px}
+  .grid .btn{font-size:42px;border-radius:26px;margin:0}
+  .plat{position:absolute;width:26%;height:20px;border-radius:10px;background:var(--grass);box-shadow:0 7px 0 var(--dirt);color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;transition:top .42s ease-in-out}
+  .hero{position:absolute;font-size:52px;line-height:1;transition:left .42s ease-in-out}
+  .banner{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);background:linear-gradient(90deg,var(--pink),var(--purple));border:4px solid #fff;border-radius:30px;color:#fff;font-weight:900;font-size:28px;padding:10px 22px;white-space:nowrap;animation:pop .6s}
+  @keyframes pop{from{transform:translate(-50%,-50%) scale(.3)}}
+  .stat{border:3px solid var(--c);border-radius:18px;background:#fff;text-align:center;padding:8px}
+  .stat b{display:block;font-size:26px;color:var(--c)}
+  .stat small{font-weight:700}
+  .row{display:flex;gap:12px}
+  .rank{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .av{width:38px;height:38px;border-radius:50%;background:var(--purple);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center}
+  .caption{font-size:13px;text-align:center;margin-top:8px;color:#555;max-width:360px}
+  .label{width:100%;text-align:center;font-weight:800;margin-top:-14px}
+  .conf{position:absolute;top:-10px;width:9px;height:14px;animation:fall 2.6s linear forwards}
+  @keyframes fall{to{transform:translateY(780px) rotate(720deg)}}
+</style>
+</head>
+<body>
+
+<div>
+<div class="phone" id="phone">
+  <div class="cloud" style="top:30px;left:-10px;font-size:80px">☁️</div>
+  <div class="cloud" style="top:110px;right:-14px;font-size:64px">☁️</div>
+
+  <!-- LOGIN -->
+  <div class="screen on" id="login">
+    <div class="lang"><span class="on" data-l="vi">🇻🇳 VI</span><span data-l="en">🇬🇧 EN</span></div>
+    <div style="flex:1"></div>
+    <div style="text-align:center;font-size:110px" class="bounce hero-emoji">🐸</div>
+    <p class="title">Math Jump</p>
+    <p style="text-align:center;font-weight:700;font-size:19px;margin:4px 0" data-t="tagline"></p>
+    <p style="text-align:center;font-weight:800;color:var(--blue);margin:6px 0">1 + ? = 3 · 6 ? 2 = 3 · ? × 4 = 20</p>
+    <div style="flex:1"></div>
+    <div class="btn" style="background:var(--fb);height:58px;--shade:#0d5bc4" onclick="go('home')">ⓕ <span data-t="fb"></span></div>
+    <div class="btn" style="background:#fff;color:var(--ink);height:58px;margin-top:10px;--shade:#ccc" onclick="go('home')">🎮 <span data-t="guest"></span></div>
+    <p style="text-align:center;font-size:13px;opacity:.7" data-t="guestNote"></p>
+  </div>
+
+  <!-- HOME -->
+  <div class="screen" id="home">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="av">B</div><b style="flex:1;font-size:17px" data-t="hello"></b>
+      <span style="background:rgba(255,255,255,.8);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700"><span style="color:var(--green)">●</span> <span data-t="online"></span></span>
+    </div>
+    <div style="flex:1"></div>
+    <p class="title">Math Jump</p>
+    <div style="text-align:center;font-size:96px;margin-top:6px" class="bounce hero-emoji">🐸</div>
+    <div style="width:150px;height:20px;border-radius:12px;background:var(--grass);box-shadow:0 7px 0 var(--dirt);margin:0 auto"></div>
+    <div class="card" style="margin-top:24px;text-align:center">
+      <b>🏆 <span data-t="best"></span></b><div style="margin-top:6px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+      <span class="pill" style="--c:var(--orange)" id="bestScore">⭐ 0</span><span class="pill" style="--c:var(--purple)" id="bestLevel">Level 1</span></div>
+    </div>
+    <div style="flex:1"></div>
+    <div class="btn" style="background:var(--green);height:80px;font-size:36px;border-radius:30px;--shade:#2b8a3e" onclick="startGame()">▶ <span data-t="play"></span></div>
+    <div class="row" style="margin-top:12px">
+      <div class="btn" style="flex:1;height:84px;flex-direction:column;font-size:15px;gap:2px;background:var(--orange);--shade:#d9760c" onclick="go('rank')"><span style="font-size:28px">🏆</span><span data-t="rank"></span></div>
+      <div class="btn" style="flex:1;height:84px;flex-direction:column;font-size:15px;gap:2px;background:var(--pink);--shade:#d6528b" onclick="go('rank')"><span style="font-size:28px">👫</span><span data-t="friends"></span></div>
+      <div class="btn" style="flex:1;height:84px;flex-direction:column;font-size:15px;gap:2px;background:var(--blue);--shade:#1c7ed6" onclick="cycleHero()"><span style="font-size:28px">⚙️</span><span data-t="settings"></span></div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="screen" id="game" style="padding:12px 16px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="background:#fff;border-radius:50%;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-weight:900">❚❚</span>
+      <span class="pill" style="--c:var(--purple)" id="gLevel">Level 1</span>
+      <span style="flex:1"></span>
+      <b id="gain" style="color:var(--green);font-size:20px"></b>
+      <span class="pill" style="--c:var(--orange)" id="gScore">⭐ 0</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px">⏰<div class="timer"><div id="tbar"></div></div><b id="tsec" style="width:38px;text-align:right">10.0</b></div>
+    <div class="stage" id="stage"></div>
+    <div class="card eq" id="eq"></div>
+    <div class="grid" id="choices"></div>
+    <div style="display:flex;align-items:center;gap:8px">🏁<div class="timer" style="height:12px"><div id="pbar" style="background:var(--purple);width:0"></div></div><b id="ptext" style="font-size:14px"></b></div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="screen" id="result" style="overflow:auto">
+    <h2 style="text-align:center;margin:6px 0 14px" id="rTitle"></h2>
+    <div style="background:linear-gradient(135deg,#FFF3BF,#FFDEEB,#D0EBFF);border:5px solid #fff;border-radius:28px;padding:16px">
+      <div style="display:flex;align-items:center;gap:12px"><span style="font-size:50px" class="hero-emoji">🐸</span><div><b style="font-size:24px;color:var(--purple)">Math Jump</b><br><b>Bé Bin</b></div></div>
+      <div id="rRecord" style="text-align:center;margin:10px 0"><span class="pill" style="--c:var(--red)">🏆 <span data-t="newRecord"></span></span></div>
+      <div class="row" style="margin-top:10px"><div class="stat" style="flex:1;--c:var(--orange)">⭐<b id="rScore"></b><small data-t="score"></small></div><div class="stat" style="flex:1;--c:var(--purple)">🚀<b id="rLevel"></b><small>Level</small></div></div>
+      <div class="row" style="margin-top:10px"><div class="stat" style="flex:1;--c:var(--blue)">⏱️<b id="rTime" style="font-size:20px"></b><small data-t="time"></small></div><div class="stat" style="flex:1;--c:var(--green)">✅<b id="rCorrect"></b><small data-t="correct"></small></div></div>
+    </div>
+    <div class="btn" style="background:var(--fb);height:58px;margin-top:20px;--shade:#0d5bc4" onclick="alert(T().copied)">ⓕ <span data-t="share"></span></div>
+    <div class="row" style="margin-top:10px">
+      <div class="btn" style="flex:1;height:58px;font-size:18px;background:var(--orange);--shade:#d9760c" onclick="startGame()">🔁 <span data-t="again"></span></div>
+      <div class="btn" style="flex:1;height:58px;font-size:18px;background:var(--blue);--shade:#1c7ed6" onclick="go('home')">🏠 <span data-t="home"></span></div>
+    </div>
+    <p style="text-align:center;font-weight:800;cursor:pointer" onclick="go('rank')">🏆 <span data-t="rank"></span></p>
+  </div>
+
+  <!-- RANKING -->
+  <div class="screen" id="rank">
+    <div style="display:flex;align-items:center"><b style="cursor:pointer;font-size:22px" onclick="go('home')">←</b><h2 style="flex:1;text-align:center;margin:0">🏆 <span data-t="rank"></span></h2></div>
+    <div style="display:flex;background:rgba(255,255,255,.7);border-radius:30px;padding:4px;margin:14px 0">
+      <span style="flex:1;text-align:center;background:var(--orange);color:#fff;border-radius:26px;padding:8px;font-weight:900">👫 <span data-t="friends"></span></span>
+      <span style="flex:1;text-align:center;padding:8px;font-weight:900">🎮 <span data-t="mine"></span></span>
+    </div>
+    <div id="rankList"></div>
+  </div>
+
+  <div id="confetti"></div>
+</div>
+<p class="caption" id="cap"></p>
+</div>
+
+<script>
+const S={vi:{tagline:'Nhảy lên cùng những con số!',fb:'Đăng nhập bằng Facebook',guest:'Chơi ngay (không đăng nhập)',guestNote:'Chế độ khách chỉ lưu trên máy này.',hello:'Xin chào, Bé Bin!',online:'Trực tuyến',best:'Kỷ lục',play:'CHƠI',rank:'Xếp hạng',friends:'Bạn bè',settings:'Cài đặt',newRecord:'KỶ LỤC MỚI!',score:'Điểm',time:'Thời gian sống',correct:'Phép tính đúng',share:'Khoe lên Facebook',again:'Chơi lại',home:'Trang chủ',mine:'Của tôi',timeUp:'Hết giờ rồi! ⏰',wrong:'Ôi, sai mất rồi! 😵',congrats:'Chúc mừng! Kỷ lục mới 🎉',copied:'Đã sao chép lời khoe — dán vào bài đăng Facebook nhé!\n\n🎉 Mình vừa đạt điểm cao trong Math Jump! Ai dám thách đấu không? 😎',you:'(bạn)',sec:'giây',cap:'Bản xem trước HTML mô phỏng giao diện app. Bấm thử để chơi; nút ⚙️ đổi nhân vật.'},
+en:{tagline:'Jump higher with numbers!',fb:'Continue with Facebook',guest:'Play as guest',guestNote:'Guest mode saves on this device only.',hello:'Hi, Bin!',online:'Online',best:'Best',play:'PLAY',rank:'Ranking',friends:'Friends',settings:'Settings',newRecord:'NEW RECORD!',score:'Score',time:'Survival time',correct:'Correct answers',share:'Share on Facebook',again:'Play again',home:'Home',mine:'My games',timeUp:"Time's up! ⏰",wrong:'Oops, wrong answer! 😵',congrats:'Congratulations! New record 🎉',copied:'Caption copied — paste it into your Facebook post!\n\n🎉 I just set a high score in Math Jump! Who dares to challenge me? 😎',you:'(you)',sec:'s',cap:'HTML preview imitating the app UI. Tap to play; ⚙️ changes the character.'}};
+let lang='vi';const T=()=>S[lang];
+function applyLang(){document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T()[e.dataset.t]);document.getElementById('cap').textContent=T().cap;document.querySelectorAll('.lang span').forEach(s=>s.classList.toggle('on',s.dataset.l===lang))}
+document.querySelectorAll('.lang span').forEach(s=>s.onclick=()=>{lang=s.dataset.l;applyLang()});
+function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));if(id==='rank')renderRank();if(id!=='game')stopTimer()}
+const heroes=['🐸','🐰','🐱','🐶','🐼','🦊','🐵','🐧','🦄','🐯'];let hero=0;
+function cycleHero(){hero=(hero+1)%heroes.length;document.querySelectorAll('.hero-emoji').forEach(e=>e.textContent=heroes[hero])}
+
+const OPS=['+','−','×','÷'];const ap=(o,a,b)=>o==='+'?a+b:o==='−'?a-b:o==='×'?a*b:(b&&a%b===0?a/b:null);
+const cfg=l=>({ops:OPS.slice(0,Math.min(4,l)),add:10+(l-1)*15,fac:l<=10?Math.min(12,2+l):Math.min(20,12+l-10),time:Math.max(3,10-(l-1)*.7),goal:50+(l-1)*30});
+const R=n=>Math.floor(Math.random()*n);
+function gen(l){const c=cfg(l);for(;;){const op=c.ops[R(c.ops.length)];let a,b,r;
+ if(op==='+'){a=R(c.add+1);b=R(c.add-a+1);r=a+b}else if(op==='−'){a=R(c.add+1);b=R(a+1);r=a-b}else if(op==='×'){a=2+R(c.fac-1);b=2+R(c.fac-1);r=a*b}else{b=2+R(c.fac-1);r=1+R(c.fac);a=b*r}
+ if(Math.random()<(l<=1?.15:.25)){if(OPS.filter(o=>ap(o,a,b)===r).length!==1)continue;return{a,b,r,op,miss:'op',ans:op,ch:[...OPS]}}
+ const miss=['a','b','r'][R(3)];const v={a,b,r}[miss];const set=new Set([v]);const sp=Math.max(3,Math.round(v*.25));
+ while(set.size<4){const d=1+R(sp);const x=Math.random()<.5?v+d:v-d;if(x>=0)set.add(x)}
+ return{a,b,r,op,miss,ans:String(v),ch:[...set].map(String).sort(()=>Math.random()-.5)}}}
+
+let G,tid,best=0;const cols=['var(--orange)','var(--blue)','var(--pink)','var(--purple)'];
+function startGame(){G={level:1,score:0,lp:0,correct:0,t0:Date.now(),over:false};go('game');buildStage();next()}
+function next(){G.q=gen(G.level);G.picked=null;G.limit=cfg(G.level).time*1000;G.qs=Date.now();render();stopTimer();tid=setInterval(tick,50)}
+function stopTimer(){clearInterval(tid)}
+function tick(){const rem=Math.max(0,1-(Date.now()-G.qs)/G.limit);const bar=document.getElementById('tbar');bar.style.width=rem*100+'%';
+ bar.style.background=`hsl(${rem*125},70%,52%)`;document.getElementById('tsec').textContent=(rem*G.limit/1000).toFixed(1);if(rem<=0)over('timeUp')}
+function render(){const q=G.q,rev=G.picked===q.ans||G.over;
+ const tok=(v,k)=>k===q.miss?`<span class="slot" style="${rev?'background:var(--green);color:#fff':''}">${rev?q.ans:'?'}</span>`:`<span>${v}</span>`;
+ document.getElementById('eq').innerHTML=tok(q.a,'a')+tok(q.op,'op')+tok(q.b,'b')+'<span>=</span>'+tok(q.r,'r');
+ document.getElementById('choices').innerHTML=q.ch.map((c,i)=>{let bg=cols[i];if(G.picked||G.over){if(c===q.ans)bg='var(--green)';else if(c===G.picked)bg='var(--red)';else if(G.over)bg='#bbb'}
+  return`<div class="btn" style="background:${bg};--shade:rgba(0,0,0,.22);${q.miss==='op'?'font-size:56px':''}" onclick="pick('${c}')">${c}</div>`}).join('');
+ document.getElementById('gLevel').textContent='Level '+G.level;document.getElementById('gScore').textContent='⭐ '+G.score;
+ const goal=cfg(G.level).goal;document.getElementById('pbar').style.width=Math.min(100,G.lp/goal*100)+'%';document.getElementById('ptext').textContent=G.lp+'/'+goal}
+function pick(c){if(G.over||G.picked)return;G.picked=c;if(c!==G.q.ans){render();return over('wrong')}
+ stopTimer();const rem=1-(Date.now()-G.qs)/G.limit;const gain=10+Math.round(rem*5);G.score+=gain;G.lp+=gain;G.correct++;
+ const g=document.getElementById('gain');g.textContent='+'+gain;setTimeout(()=>g.textContent='',700);
+ if(G.lp>=cfg(G.level).goal){G.lp-=cfg(G.level).goal;G.level++;const b=document.createElement('div');b.className='banner';b.textContent=`LEVEL ${G.level}! 🚀`;document.getElementById('stage').appendChild(b);setTimeout(()=>b.remove(),1300)}
+ render();jump();setTimeout(()=>{if(!G.over)next()},320)}
+function over(reason){if(G.over)return;G.over=true;stopTimer();render();G.reason=reason;
+ const h=document.getElementById('hero');h.style.transform='rotate(30deg)';h.textContent=heroes[hero]+'💫';
+ const b=document.createElement('div');b.className='banner';b.style.background='var(--red)';b.style.fontSize='22px';b.textContent=T()[reason];document.getElementById('stage').appendChild(b);
+ setTimeout(showResult,1600)}
+function showResult(){const rec=G.score>0&&G.score>best;if(rec)best=G.score;
+ document.getElementById('rTitle').textContent=rec?T().congrats:T()[G.reason];document.getElementById('rRecord').style.display=rec?'block':'none';
+ document.getElementById('rScore').textContent=G.score;document.getElementById('rLevel').textContent=G.level;document.getElementById('rCorrect').textContent=G.correct;
+ document.getElementById('rTime').textContent=((Date.now()-G.t0-1600)/1000).toFixed(1)+' '+T().sec;
+ document.getElementById('bestScore').textContent='⭐ '+best;document.getElementById('bestLevel').textContent='Level '+Math.max(G.level,1);
+ go('result');if(rec)confetti()}
+
+const XF=[.22,.5,.78,.5];
+function buildStage(){const st=document.getElementById('stage');st.innerHTML='<div id="ground" style="position:absolute;left:0;right:0;height:400px;background:var(--grass);border-top:14px solid var(--grass);box-shadow:inset 0 14px 0 var(--grass);transition:top .42s ease-in-out"></div>';
+ for(let i=1;i<=60;i++){const p=document.createElement('div');p.className='plat';p.id='p'+i;p.textContent=i;st.appendChild(p)}
+ const h=document.createElement('div');h.className='hero';h.id='hero';h.textContent=heroes[hero];st.appendChild(h);place(0)}
+function place(cam){const st=document.getElementById('stage'),H=st.clientHeight,W=st.clientWidth,base=H*.8,step=H*.3;
+ document.getElementById('ground').style.top=(base+cam*step)+'px';
+ for(let i=1;i<=60;i++){const p=document.getElementById('p'+i);p.style.top=(base-(i-cam)*step)+'px';p.style.left=(XF[i%4]*W-W*.13)+'px'}
+ const h=document.getElementById('hero');h.style.top=(base-50)+'px';h.style.left=(XF[cam%4]*W-26)+'px'}
+function jump(){const h=document.getElementById('hero');h.animate([{transform:'translateY(0)'},{transform:'translateY(-70px)'},{transform:'translateY(0)'}],{duration:420,easing:'ease-in-out'});place(G.correct)}
+
+function renderRank(){const rows=[['An','🥇',Math.max(best,260),7],['Bé Bin '+T().you,'',best,G?G.level:1,true],['Minh','',180,5],['Lan','',95,3]].sort((a,b)=>b[2]-a[2]);
+ document.getElementById('rankList').innerHTML=rows.map((r,i)=>`<div class="card rank" style="${r[4]?'background:#FFF3BF':''}"><b style="width:30px;text-align:center;font-size:22px">${['🥇','🥈','🥉'][i]||i+1}</b><div class="av">${r[0][0]}</div><div style="flex:1"><b>${r[0]}</b><br><small style="opacity:.7">Level ${r[3]}</small></div><b style="color:var(--orange);font-size:19px">⭐ ${r[2]}</b></div>`).join('')}
+function confetti(){const box=document.getElementById('confetti');const c=['#FF7EB3','#FFD43B','#4DABF7','#40C057','#9775FA','#FF9F43'];
+ for(let i=0;i<70;i++){const d=document.createElement('div');d.className='conf';d.style.left=Math.random()*340+'px';d.style.background=c[i%6];d.style.animationDelay=Math.random()*.8+'s';box.appendChild(d);setTimeout(()=>d.remove(),3600)}}
+applyLang();
+function fit(){const s=Math.min(1,(innerHeight-70)/760,(innerWidth-20)/380);const p=document.getElementById('phone');p.style.transform=`scale(${s})`;p.style.transformOrigin='top center';p.parentElement.style.height=(760*s+40)+'px';p.parentElement.style.width=(380*s)+'px';p.style.marginLeft=((380*s-380)/2)+'px'}
+addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>
