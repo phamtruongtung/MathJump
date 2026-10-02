@@ -31,6 +31,27 @@ jobs:
             sed -i -E 's/minSdkVersion +flutter\.minSdkVersion/minSdkVersion 23/' android/app/build.gradle
           fi
 
+      - name: Enable Google Services plugin
+        if: hashFiles('android/app/google-services.json') != ''
+        run: |
+          sed -i -E 's/^(\s*)id\("com\.android\.application"\) version/\1id("com.google.gms.google-services") version "4.4.2" apply false\n\1id("com.android.application") version/' android/settings.gradle.kts
+          sed -i -E 's/^(\s*)id\("com\.android\.application"\)\s*$/\1id("com.android.application")\n\1id("com.google.gms.google-services")/' android/app/build.gradle.kts
+          grep -q 'google-services' android/settings.gradle.kts
+          grep -q 'google-services' android/app/build.gradle.kts
+          echo "Google Services plugin enabled"
+
+      - name: Use fixed signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::Missing KEYSTORE_BASE64 secret - Facebook login will not work."
+            exit 0
+          fi
+          mkdir -p ~/.android
+          echo "$KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | grep SHA1
+
       - run: flutter pub get
 
       - name: Build
