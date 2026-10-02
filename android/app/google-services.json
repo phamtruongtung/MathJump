@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "646653196426",
+    "project_id": "mathjump-861ff",
+    "storage_bucket": "mathjump-861ff.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:646653196426:android:c7618eb0b8c3254788d573",
+        "android_client_info": {
+          "package_name": "com.mathjump.math_jump"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtc5W2e0Nb0tVBqgrmeKiB0vw_yEC_P7A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
