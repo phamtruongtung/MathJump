@@ -43,6 +43,11 @@ class MathJumpApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       home: const _RootGate(),
+      builder: (context, child) => Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerUp: (_) => context.read<AppState>().sound.ensureMusic(),
+        child: child,
+      ),
     );
   }
 }

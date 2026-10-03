@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
+import '../firebase_web_options.dart';
 import '../models/game_result.dart';
 import '../models/social.dart';
 
@@ -32,7 +33,12 @@ class CloudService {
 
   Future<void> init() async {
     try {
-      await Firebase.initializeApp();
+      if (kIsWeb) {
+        if (!webFirebaseConfigured) throw StateError('webFirebaseOptions not filled in');
+        await Firebase.initializeApp(options: webFirebaseOptions);
+      } else {
+        await Firebase.initializeApp();
+      }
       _ready = true;
     } catch (e) {
       debugPrint('[Cloud] Firebase chưa được cấu hình, chạy offline: $e');
@@ -52,6 +58,19 @@ class CloudService {
   // ---------------- Auth ----------------
 
   Future<User> signInWithFacebook() async {
+    if (kIsWeb) {
+      // Trình duyệt: Firebase mở cửa sổ đăng nhập Facebook.
+      try {
+        final uc = await FirebaseAuth.instance
+            .signInWithPopup(FacebookAuthProvider()..addScope('public_profile'));
+        return uc.user!;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'popup-closed-by-user' || e.code == 'cancelled-popup-request') {
+          throw const AuthCancelled();
+        }
+        rethrow;
+      }
+    }
     final res = await FacebookAuth.instance.login(permissions: ['public_profile']);
     if (res.status == LoginStatus.cancelled) throw const AuthCancelled();
     final token = res.accessToken;
@@ -64,9 +83,11 @@ class CloudService {
   }
 
   Future<void> signOut() async {
-    try {
-      await FacebookAuth.instance.logOut();
-    } catch (_) {}
+    if (!kIsWeb) {
+      try {
+        await FacebookAuth.instance.logOut();
+      } catch (_) {}
+    }
     if (_ready) await FirebaseAuth.instance.signOut();
   }
 

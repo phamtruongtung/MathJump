@@ -1,11 +1,9 @@
-import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -135,12 +133,13 @@ class _ResultScreenState extends State<ResultScreen> {
           _cardKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3);
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      final dir = await getTemporaryDirectory();
-      final file = File(
-          '${dir.path}/mathjump_${DateTime.now().millisecondsSinceEpoch}.png');
-      await file.writeAsBytes(data!.buffer.asUint8List());
+      final png = XFile.fromData(
+        data!.buffer.asUint8List(),
+        mimeType: 'image/png',
+        name: 'mathjump_${DateTime.now().millisecondsSinceEpoch}.png',
+      );
       if (mounted) showToast(context, copiedMsg);
-      await Share.shareXFiles([XFile(file.path, mimeType: 'image/png')], text: chosen);
+      await Share.shareXFiles([png], text: chosen);
     } catch (e) {
       if (mounted) showToast(context, context.tr('shareFailed', {'msg': e}));
     } finally {

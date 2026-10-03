@@ -26,14 +26,14 @@ class SoundService with WidgetsBindingObserver {
     _sfxOn = sfxOn;
     WidgetsBinding.instance.addObserver(this);
     try {
-      await _music.setAudioContext(_ctx);
+      if (!kIsWeb) await _music.setAudioContext(_ctx);
       await _music.setReleaseMode(ReleaseMode.loop);
       for (final s in Sfx.values) {
         // Hai player mỗi hiệu ứng để các lần bấm nhanh liên tiếp không cắt tiếng nhau.
         final players = <AudioPlayer>[];
         for (var i = 0; i < 2; i++) {
           final p = AudioPlayer();
-          await p.setAudioContext(_ctx);
+          if (!kIsWeb) await p.setAudioContext(_ctx);
           await p.setReleaseMode(ReleaseMode.stop);
           await p.setSource(AssetSource('audio/${s.name}.wav'));
           players.add(p);
@@ -47,7 +47,11 @@ class SoundService with WidgetsBindingObserver {
     }
   }
 
+  bool _starting = false;
+
   Future<void> _startMusic() async {
+    if (_starting) return;
+    _starting = true;
     try {
       if (_musicStarted) {
         await _music.resume();
@@ -57,7 +61,15 @@ class SoundService with WidgetsBindingObserver {
       }
     } catch (e) {
       debugPrint('[Sound] $e');
+    } finally {
+      _starting = false;
     }
+  }
+
+  /// Trình duyệt (nhất là Safari trên iPhone) chặn tự phát nhạc cho tới khi
+  /// người dùng chạm vào màn hình; gọi hàm này ở mỗi lần chạm để bật nhạc.
+  void ensureMusic() {
+    if (_musicOn && !_musicStarted) _startMusic();
   }
 
   Future<void> setMusicOn(bool v) async {
