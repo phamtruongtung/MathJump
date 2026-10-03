@@ -17,7 +17,24 @@ class AppColors {
   static const choices = [orange, blue, pink, purple];
 }
 
-const kCharacters = ['🐸', '🐰', '🐱', '🐶', '🐼', '🦊', '🐵', '🐧', '🦄', '🐯'];
+/// 12 con giáp (theo lịch Việt Nam: Sửu là trâu, Mão là mèo).
+const kZodiac = <({String emoji, String vi, String en})>[
+  (emoji: '🐭', vi: 'Tý', en: 'Rat'),
+  (emoji: '🐃', vi: 'Sửu', en: 'Buffalo'),
+  (emoji: '🐯', vi: 'Dần', en: 'Tiger'),
+  (emoji: '🐱', vi: 'Mão', en: 'Cat'),
+  (emoji: '🐲', vi: 'Thìn', en: 'Dragon'),
+  (emoji: '🐍', vi: 'Tỵ', en: 'Snake'),
+  (emoji: '🐴', vi: 'Ngọ', en: 'Horse'),
+  (emoji: '🐐', vi: 'Mùi', en: 'Goat'),
+  (emoji: '🐵', vi: 'Thân', en: 'Monkey'),
+  (emoji: '🐔', vi: 'Dậu', en: 'Rooster'),
+  (emoji: '🐶', vi: 'Tuất', en: 'Dog'),
+  (emoji: '🐷', vi: 'Hợi', en: 'Pig'),
+];
+
+/// Con giáp của năm hiện tại (năm 4 sau Công nguyên là năm Tý).
+String zodiacOfYear(int year) => kZodiac[(year - 4) % 12].emoji;
 
 ThemeData buildTheme() {
   final base = ThemeData(

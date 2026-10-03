@@ -3,17 +3,21 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 
+import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../models/game_result.dart';
 import '../models/social.dart';
 import '../services/cloud_service.dart';
 import '../services/local_store.dart';
+import '../services/sound_service.dart';
+import '../theme.dart';
 
 class AppState extends ChangeNotifier {
-  AppState(this.store, this.cloud);
+  AppState(this.store, this.cloud, this.sound);
 
   final LocalStore store;
   final CloudService cloud;
+  final SoundService sound;
 
   late String lang;
   late String character;
@@ -22,6 +26,10 @@ class AppState extends ChangeNotifier {
   List<GameResult> history = [];
   GameResult? best;
   int gamesPlayed = 0;
+
+  /// Hạng cao nhất đã mở khóa và hạng đang chọn để chơi.
+  int maxRank = 0;
+  int selectedRank = 0;
   List<FriendEntry> friends = [];
   List<FriendRequest> incoming = [];
   DateTime? lastSync;
@@ -36,7 +44,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> init() async {
     lang = store.lang;
-    character = store.character;
+    final saved = store.character;
+    character = kZodiac.any((z) => z.emoji == saved)
+        ? saved!
+        : zodiacOfYear(DateTime.now().year);
+    await sound.init(musicOn: store.musicOn, sfxOn: store.sfxOn);
 
     final user = cloud.currentUser;
     if (user != null) {
@@ -83,11 +95,15 @@ class AppState extends ChangeNotifier {
       incoming = [];
       lastSync = null;
       friendCode = null;
+      maxRank = 0;
+      selectedRank = 0;
       return;
     }
     history = store.history(p.id);
     best = store.best(p.id);
     gamesPlayed = store.gamesPlayed(p.id);
+    maxRank = store.maxRank(p.id).clamp(0, kRanks.length - 1);
+    selectedRank = (store.selectedRank(p.id) ?? maxRank).clamp(0, maxRank);
     friends = store.friends(p.id);
     lastSync = store.lastSync(p.id);
     friendCode = store.friendCode(p.id);
@@ -106,6 +122,38 @@ class AppState extends ChangeNotifier {
   Future<void> setCharacter(String v) async {
     character = v;
     await store.setCharacter(v);
+    notifyListeners();
+  }
+
+  Future<void> setMusicOn(bool v) async {
+    await store.setMusicOn(v);
+    await sound.setMusicOn(v);
+    notifyListeners();
+  }
+
+  Future<void> setSfxOn(bool v) async {
+    await store.setSfxOn(v);
+    sound.setSfxOn(v);
+    notifyListeners();
+  }
+
+  Future<void> setSelectedRank(int v) async {
+    final p = profile;
+    if (p == null || v < 0 || v > maxRank) return;
+    selectedRank = v;
+    await store.setSelectedRank(p.id, v);
+    notifyListeners();
+  }
+
+  /// Mở khóa hạng mới (gọi khi người chơi đạt điều kiện thăng hạng trong ván).
+  /// Ván sau sẽ tự chọn hạng mới.
+  void unlockRank(int v) {
+    final p = profile;
+    if (p == null || v <= maxRank || v >= kRanks.length) return;
+    maxRank = v;
+    selectedRank = v;
+    unawaited(store.setMaxRank(p.id, v));
+    unawaited(store.setSelectedRank(p.id, v));
     notifyListeners();
   }
 
@@ -169,7 +217,7 @@ class AppState extends ChangeNotifier {
   bool recordResult(GameResult r) {
     final p = profile;
     if (p == null) return false;
-    final isRecord = r.score > 0 && (best == null || r.score > best!.score);
+    final isRecord = r.beats(best);
     history = [r, ...history].take(100).toList();
     gamesPlayed++;
     if (isRecord) best = r;
@@ -192,10 +240,13 @@ class AppState extends ChangeNotifier {
       bestScore: best?.score ?? 0,
       bestLevel: best?.level ?? 0,
       bestTimeMs: best?.durationMs ?? 0,
+      bestRank: best?.rank ?? 0,
       isMe: true,
     );
     final list = [...friends.where((f) => f.uid != p.id), me];
     list.sort((x, y) {
+      final r = y.bestRank.compareTo(x.bestRank);
+      if (r != 0) return r;
       final s = y.bestScore.compareTo(x.bestScore);
       if (s != 0) return s;
       final l = y.bestLevel.compareTo(x.bestLevel);
@@ -219,11 +270,15 @@ class AppState extends ChangeNotifier {
         friendCode = code;
         await store.setFriendCode(p.id, code);
       }
-      final remoteBetter = await cloud.syncBest(
-          uid: p.id, localBest: best, gamesPlayed: gamesPlayed);
-      if (remoteBetter != null) {
-        best = remoteBetter;
-        await store.setBest(p.id, remoteBetter);
+      final remote = await cloud.syncBest(
+          uid: p.id, localBest: best, gamesPlayed: gamesPlayed, maxRank: maxRank);
+      if (remote.best != null) {
+        best = remote.best;
+        await store.setBest(p.id, remote.best!);
+      }
+      if (remote.maxRank > maxRank) {
+        maxRank = remote.maxRank.clamp(0, kRanks.length - 1);
+        await store.setMaxRank(p.id, maxRank);
       }
       friends = await cloud.fetchFriends(p.id);
       await store.setFriends(p.id, friends);

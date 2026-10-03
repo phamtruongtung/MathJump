@@ -19,8 +19,14 @@ class LocalStore {
       (PlatformDispatcher.instance.locale.languageCode == 'vi' ? 'vi' : 'en');
   Future<void> setLang(String v) => _p.setString('lang', v);
 
-  String get character => _p.getString('character') ?? '🐸';
+  String? get character => _p.getString('character');
   Future<void> setCharacter(String v) => _p.setString('character', v);
+
+  bool get musicOn => _p.getBool('musicOn') ?? true;
+  Future<void> setMusicOn(bool v) => _p.setBool('musicOn', v);
+
+  bool get sfxOn => _p.getBool('sfxOn') ?? true;
+  Future<void> setSfxOn(bool v) => _p.setBool('sfxOn', v);
 
   bool get guestChosen => _p.getBool('guestChosen') ?? false;
   Future<void> setGuestChosen(bool v) => _p.setBool('guestChosen', v);
@@ -65,6 +71,13 @@ class LocalStore {
   Future<void> setLastSync(String pid, DateTime v) =>
       _p.setInt('lastSync_$pid', v.millisecondsSinceEpoch);
 
+  /// Hạng cao nhất đã mở khóa, và hạng đang chọn để chơi.
+  int maxRank(String pid) => _p.getInt('maxRank_$pid') ?? 0;
+  Future<void> setMaxRank(String pid, int v) => _p.setInt('maxRank_$pid', v);
+
+  int? selectedRank(String pid) => _p.getInt('selRank_$pid');
+  Future<void> setSelectedRank(String pid, int v) => _p.setInt('selRank_$pid', v);
+
   String? friendCode(String pid) => _p.getString('code_$pid');
   Future<void> setFriendCode(String pid, String v) => _p.setString('code_$pid', v);
 
@@ -74,6 +87,7 @@ class LocalStore {
     final b = best(from);
     if (b != null) await setBest(to, b);
     await setGamesPlayed(to, gamesPlayed(from));
+    await setMaxRank(to, maxRank(from));
   }
 
   List<T> _readList<T>(String key, T Function(Map<String, dynamic>) f) {

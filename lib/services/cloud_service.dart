@@ -101,44 +101,51 @@ class CloudService {
     return code;
   }
 
-  /// Đẩy kỷ lục trên máy lên server (chỉ khi cao hơn). Nếu server đang giữ
-  /// kỷ lục cao hơn (chơi trên máy khác) thì trả về kỷ lục đó.
-  Future<GameResult?> syncBest({
+  /// Đẩy kỷ lục và hạng trên máy lên server (chỉ khi cao hơn). Nếu server đang
+  /// giữ kỷ lục / hạng cao hơn (chơi trên máy khác) thì trả về để cập nhật máy.
+  Future<({GameResult? best, int maxRank})> syncBest({
     required String uid,
     GameResult? localBest,
     required int gamesPlayed,
+    required int maxRank,
   }) {
     final ref = _user(uid);
-    return _db.runTransaction<GameResult?>((tx) async {
+    return _db.runTransaction<({GameResult? best, int maxRank})>((tx) async {
       final snap = await tx.get(ref);
       final d = snap.data() ?? const <String, dynamic>{};
-      final remoteScore = (d['bestScore'] as num?)?.toInt() ?? -1;
       final remoteGames = (d['gamesPlayed'] as num?)?.toInt() ?? 0;
+      final remoteMaxRank = (d['maxRank'] as num?)?.toInt() ?? 0;
+      final hasRemote = d['bestScore'] != null;
+      final remoteBest = !hasRemote
+          ? null
+          : GameResult(
+              score: (d['bestScore'] as num).toInt(),
+              level: (d['bestLevel'] as num?)?.toInt() ?? 1,
+              correct: (d['bestCorrect'] as num?)?.toInt() ?? 0,
+              durationMs: (d['bestTimeMs'] as num?)?.toInt() ?? 0,
+              playedAt: (d['bestAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+              rank: (d['bestRank'] as num?)?.toInt() ?? 0,
+            );
       final update = <String, dynamic>{
         'gamesPlayed': max(remoteGames, gamesPlayed),
+        'maxRank': max(remoteMaxRank, maxRank),
         'updatedAt': FieldValue.serverTimestamp(),
       };
       GameResult? remoteBetter;
-      final localScore = localBest?.score ?? -1;
-      if (localBest != null && localScore > remoteScore) {
+      if (localBest != null && localBest.beats(remoteBest)) {
         update.addAll({
           'bestScore': localBest.score,
           'bestLevel': localBest.level,
           'bestCorrect': localBest.correct,
           'bestTimeMs': localBest.durationMs,
+          'bestRank': localBest.rank,
           'bestAt': Timestamp.fromDate(localBest.playedAt),
         });
-      } else if (remoteScore > localScore) {
-        remoteBetter = GameResult(
-          score: remoteScore,
-          level: (d['bestLevel'] as num?)?.toInt() ?? 1,
-          correct: (d['bestCorrect'] as num?)?.toInt() ?? 0,
-          durationMs: (d['bestTimeMs'] as num?)?.toInt() ?? 0,
-          playedAt: (d['bestAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        );
+      } else if (remoteBest != null && remoteBest.beats(localBest)) {
+        remoteBetter = remoteBest;
       }
       tx.set(ref, update, SetOptions(merge: true));
-      return remoteBetter;
+      return (best: remoteBetter, maxRank: remoteMaxRank);
     }).timeout(_timeout);
   }
 

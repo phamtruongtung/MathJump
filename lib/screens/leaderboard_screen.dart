@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../models/social.dart';
 import '../state/app_state.dart';
@@ -141,7 +142,7 @@ class _RankRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             Text(
-              '${context.tr('level')} ${e.bestLevel} • ⏱️ ${fmtDuration(e.bestTimeMs, context.lang)}',
+              '${rankAt(e.bestRank).emoji} ${context.tr(rankAt(e.bestRank).key)} • Lv ${e.bestLevel} • ⏱️ ${fmtDuration(e.bestTimeMs, context.lang)}',
               style: TextStyle(color: AppColors.ink.withValues(alpha: 0.7), fontSize: 13),
             ),
           ]),
@@ -160,7 +161,8 @@ class _MyHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
-    final games = [...s.history]..sort((a, b) => b.score.compareTo(a.score));
+    final games = [...s.history]
+      ..sort((a, b) => a.rank != b.rank ? b.rank.compareTo(a.rank) : b.score.compareTo(a.score));
     if (games.isEmpty) {
       return ListView(padding: const EdgeInsets.all(16), children: [
         _Notice(text: context.tr('noGames')),
@@ -195,7 +197,7 @@ class _MyHistory extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(
-                  '${context.tr('level')} ${g.level} • ✅ ${g.correct} • ⏱️ ${fmtDuration(g.durationMs, context.lang)}',
+                  '${rankAt(g.rank).emoji} Lv ${g.level} • ✅ ${g.correct} • ⏱️ ${fmtDuration(g.durationMs, context.lang)}',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 Text(fmtDateTime(g.playedAt),

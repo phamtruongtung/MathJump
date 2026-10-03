@@ -23,6 +23,9 @@ class FriendEntry {
   final int bestScore;
   final int bestLevel;
   final int bestTimeMs;
+
+  /// Hạng của ván đạt kỷ lục.
+  final int bestRank;
   final bool isMe;
 
   const FriendEntry({
@@ -32,6 +35,7 @@ class FriendEntry {
     required this.bestScore,
     required this.bestLevel,
     required this.bestTimeMs,
+    this.bestRank = 0,
     this.isMe = false,
   });
 
@@ -43,6 +47,7 @@ class FriendEntry {
         bestScore: (m['bestScore'] as num?)?.toInt() ?? 0,
         bestLevel: (m['bestLevel'] as num?)?.toInt() ?? 0,
         bestTimeMs: (m['bestTimeMs'] as num?)?.toInt() ?? 0,
+        bestRank: (m['bestRank'] as num?)?.toInt() ?? 0,
       );
 
   Map<String, dynamic> toJson() => {
@@ -52,6 +57,7 @@ class FriendEntry {
         'bestScore': bestScore,
         'bestLevel': bestLevel,
         'bestTimeMs': bestTimeMs,
+        'bestRank': bestRank,
       };
 
   factory FriendEntry.fromJson(Map<String, dynamic> j) =>

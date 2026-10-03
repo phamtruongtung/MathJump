@@ -5,13 +5,25 @@ class GameResult {
   final int durationMs;
   final DateTime playedAt;
 
+  /// Hạng chơi của ván này (xem kRanks).
+  final int rank;
+
   const GameResult({
     required this.score,
     required this.level,
     required this.correct,
     required this.durationMs,
     required this.playedAt,
+    this.rank = 0,
   });
+
+  /// So sánh thành tích: hạng cao hơn thắng, cùng hạng thì điểm cao hơn thắng.
+  bool beats(GameResult? other) {
+    if (score <= 0) return false;
+    if (other == null) return true;
+    if (rank != other.rank) return rank > other.rank;
+    return score > other.score;
+  }
 
   Map<String, dynamic> toJson() => {
         'score': score,
@@ -19,6 +31,7 @@ class GameResult {
         'correct': correct,
         'durationMs': durationMs,
         'playedAt': playedAt.millisecondsSinceEpoch,
+        'rank': rank,
       };
 
   factory GameResult.fromJson(Map<String, dynamic> j) => GameResult(
@@ -28,5 +41,6 @@ class GameResult {
         durationMs: (j['durationMs'] as num?)?.toInt() ?? 0,
         playedAt: DateTime.fromMillisecondsSinceEpoch(
             (j['playedAt'] as num?)?.toInt() ?? 0),
+        rank: (j['rank'] as num?)?.toInt() ?? 0,
       );
 }

@@ -45,13 +45,13 @@ const _vi = <String, String>{
       'Đã sao chép lời khoe — hãy dán vào ô nội dung bài đăng Facebook nhé!',
   'shareFailed': 'Không chia sẻ được: {msg}',
   'st1':
-      '🎉 Mình vừa đạt {score} điểm và leo lên Level {level} trong Math Jump! Giải đúng liền {correct} phép tính trong {time}. Ai dám thách đấu không? 😎 #MathJump',
+      '🎉 Mình vừa đạt {score} điểm và leo lên Level {level} hạng {rank} trong Math Jump! Giải đúng liền {correct} phép tính trong {time}. Ai dám thách đấu không? 😎 #MathJump',
   'st2':
       '🧠⚡ Cộng trừ nhân chia nhanh như chớp! {correct} phép tính đúng liên tiếp, {score} điểm, Level {level}. Bạn có vượt qua được mình không? 💪 #MathJump',
   'st3':
       '🐸 Nhảy {correct} bậc thang toán học, trụ vững {time}, đạt {score} điểm! Nhỏ mà có võ đấy nhé 😆 Vào Math Jump đua với mình nào! #MathJump',
   'stRecord':
-      '🏆 KỶ LỤC MỚI! {score} điểm – Level {level} trong Math Jump. Ai phá được kỷ lục này mình khao trà sữa! 🧋 #MathJump',
+      '🏆 KỶ LỤC MỚI! {score} điểm – Level {level} – hạng {rank} trong Math Jump. Ai phá được kỷ lục này mình khao trà sữa! 🧋 #MathJump',
   'myHistory': 'Của tôi',
   'you': '(bạn)',
   'lastSync': 'Cập nhật lúc {time}',
@@ -95,8 +95,27 @@ const _vi = <String, String>{
   'howToPlayBody':
       'Chọn con số hoặc dấu (+ − × ÷) còn thiếu để phép tính đúng trước khi hết giờ. '
           'Mỗi câu đúng, nhân vật nhảy lên một bậc. Trả lời càng nhanh càng được nhiều điểm. '
-          'Đủ điểm sẽ lên level: số lớn hơn, thời gian ngắn hơn. Sai hoặc hết giờ là kết thúc!',
+          'Đủ điểm sẽ lên level: số lớn hơn, thời gian ngắn hơn. Sai hoặc hết giờ là kết thúc!\n\n'
+          'Có 6 hạng: Đồng, Bạc, Vàng, Bạch Kim, Kim Cương, Huyền Thoại. Hạng càng cao thì thời gian '
+          'trả lời càng ngắn. Đạt đủ level và điểm trong một ván để thăng hạng.',
   'games': 'Số ván: {n}',
+  'rank': 'Hạng',
+  'rank_0': 'Đồng',
+  'rank_1': 'Bạc',
+  'rank_2': 'Vàng',
+  'rank_3': 'Bạch Kim',
+  'rank_4': 'Kim Cương',
+  'rank_5': 'Huyền Thoại',
+  'chooseRank': 'Chọn hạng chơi',
+  'rankTime': '⏱️ {start} giây → {end} giây mỗi câu',
+  'rankLocked': '🔒 Mở khóa: đạt Level {level} và {score} điểm ở hạng {rank}',
+  'nextRankGoal': 'Lên hạng {rank}: đạt Level {level} và {score} điểm trong một ván',
+  'topRank': 'Bạn đang ở hạng cao nhất! 👑',
+  'rankUp': 'THĂNG HẠNG {rank}!',
+  'promoted': 'Chúc mừng! Bạn đã thăng hạng {rank} 🎉',
+  'sound': 'Âm thanh',
+  'music': 'Nhạc nền',
+  'sfx': 'Hiệu ứng âm thanh',
 };
 
 const _en = <String, String>{
@@ -143,13 +162,13 @@ const _en = <String, String>{
   'statusCopied': 'Caption copied — paste it into your Facebook post!',
   'shareFailed': 'Could not share: {msg}',
   'st1':
-      '🎉 I just scored {score} points and reached Level {level} in Math Jump! {correct} correct answers in a row in {time}. Who dares to challenge me? 😎 #MathJump',
+      '🎉 I just scored {score} points and reached Level {level} in {rank} rank in Math Jump! {correct} correct answers in a row in {time}. Who dares to challenge me? 😎 #MathJump',
   'st2':
       '🧠⚡ Lightning-fast math! {correct} correct in a row, {score} points, Level {level}. Can you beat me? 💪 #MathJump',
   'st3':
       '🐸 Jumped {correct} math steps and survived {time} for {score} points! Small but mighty 😆 Come race me on Math Jump! #MathJump',
   'stRecord':
-      '🏆 NEW RECORD! {score} points – Level {level} in Math Jump. Beat it and the bubble tea is on me! 🧋 #MathJump',
+      '🏆 NEW RECORD! {score} points – Level {level} – {rank} rank in Math Jump. Beat it and the bubble tea is on me! 🧋 #MathJump',
   'myHistory': 'My games',
   'you': '(you)',
   'lastSync': 'Updated {time}',
@@ -192,8 +211,27 @@ const _en = <String, String>{
   'howToPlayBody':
       'Pick the missing number or sign (+ − × ÷) to complete the equation before time runs out. '
           'Each correct answer makes your character jump one step. Faster answers earn more points. '
-          'Collect enough points to level up: bigger numbers, less time. A wrong answer or timeout ends the game!',
+          'Collect enough points to level up: bigger numbers, less time. A wrong answer or timeout ends the game!\n\n'
+          'There are 6 ranks: Bronze, Silver, Gold, Platinum, Diamond and Legend. Higher ranks give less time '
+          'per question. Reach the required level and score in one game to rank up.',
   'games': 'Games: {n}',
+  'rank': 'Rank',
+  'rank_0': 'Bronze',
+  'rank_1': 'Silver',
+  'rank_2': 'Gold',
+  'rank_3': 'Platinum',
+  'rank_4': 'Diamond',
+  'rank_5': 'Legend',
+  'chooseRank': 'Choose your rank',
+  'rankTime': '⏱️ {start}s → {end}s per question',
+  'rankLocked': '🔒 Unlock: reach Level {level} with {score} points in {rank}',
+  'nextRankGoal': 'Rank up to {rank}: reach Level {level} with {score} points in one game',
+  'topRank': 'You are at the top rank! 👑',
+  'rankUp': 'RANK UP: {rank}!',
+  'promoted': 'Congratulations! You reached {rank} 🎉',
+  'sound': 'Sound',
+  'music': 'Background music',
+  'sfx': 'Sound effects',
 };
 
 String trLang(String lang, String key, [Map<String, Object?> args = const {}]) {

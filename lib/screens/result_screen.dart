@@ -9,8 +9,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../models/game_result.dart';
+import '../services/sound_service.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
@@ -24,12 +26,16 @@ class ResultScreen extends StatefulWidget {
     required this.newRecord,
     required this.previousBest,
     required this.reason,
+    this.promotedTo,
   });
 
   final GameResult result;
   final bool newRecord;
   final GameResult? previousBest;
   final String reason;
+
+  /// Hạng mới nếu người chơi vừa thăng hạng trong ván này.
+  final int? promotedTo;
 
   @override
   State<ResultScreen> createState() => _ResultScreenState();
@@ -43,8 +49,11 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.newRecord) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _confetti.play());
+    if (widget.newRecord || widget.promotedTo != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _confetti.play();
+        context.read<AppState>().sound.play(Sfx.record);
+      });
     }
   }
 
@@ -71,6 +80,7 @@ class _ResultScreenState extends State<ResultScreen> {
       'level': r.level,
       'correct': r.correct,
       'time': fmtDuration(r.durationMs, context.lang),
+      'rank': context.tr(rankAt(r.rank).key),
     };
     return [
       if (widget.newRecord) context.tr('stRecord', args),
@@ -142,9 +152,12 @@ class _ResultScreenState extends State<ResultScreen> {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final overtaken = _overtaken(s);
-    final title = widget.newRecord
-        ? context.tr('newRecordCongrats')
-        : context.tr(widget.reason);
+    final promoted = widget.promotedTo == null ? null : rankAt(widget.promotedTo!);
+    final title = promoted != null
+        ? context.tr('promoted', {'rank': '${promoted.emoji} ${context.tr(promoted.key)}'})
+        : widget.newRecord
+            ? context.tr('newRecordCongrats')
+            : context.tr(widget.reason);
 
     return Scaffold(
       body: SkyBackground(
@@ -275,6 +288,7 @@ class ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = context.lang;
+    final rank = rankAt(result.rank);
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -301,6 +315,7 @@ class ResultCard extends StatelessWidget {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             ]),
           ),
+          Pill(text: '${rank.emoji} ${context.tr(rank.key)}', color: rank.color, fontSize: 15),
         ]),
         if (newRecord) ...[
           const SizedBox(height: 10),

@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../game/question.dart';
+import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../models/game_result.dart';
+import '../services/sound_service.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/climber_view.dart';
@@ -26,6 +28,11 @@ class _GameScreenState extends State<GameScreen>
   final _watch = Stopwatch();
   late final AnimationController _timer;
 
+  late final AppState _app = context.read<AppState>();
+  late final int _rank = _app.selectedRank;
+  bool _promoted = false;
+  String? _banner;
+
   int _level = 1;
   int _score = 0;
   int _levelPoints = 0;
@@ -37,7 +44,6 @@ class _GameScreenState extends State<GameScreen>
   bool _over = false;
   bool _paused = false;
   bool _pendingNext = false;
-  bool _showLevelUp = false;
   String _reason = 'wrong';
 
   @override
@@ -67,8 +73,8 @@ class _GameScreenState extends State<GameScreen>
   }
 
   void _startTimer() {
-    _timer.duration =
-        Duration(milliseconds: (LevelConfig(_level).timeLimit * 1000).round());
+    _timer.duration = Duration(
+        milliseconds: (LevelConfig(_level, rank: _rank).timeLimit * 1000).round());
     _timer.forward(from: 0);
   }
 
@@ -90,9 +96,10 @@ class _GameScreenState extends State<GameScreen>
     }
 
     HapticFeedback.lightImpact();
+    _app.sound.play(Sfx.correct);
     _timer.stop();
     final gain = 10 + ((1 - _timer.value) * 5).round(); // nhanh thì thêm tối đa 5 điểm
-    final cfg = LevelConfig(_level);
+    final cfg = LevelConfig(_level, rank: _rank);
     var levelUp = false;
     setState(() {
       _picked = choice;
@@ -104,14 +111,22 @@ class _GameScreenState extends State<GameScreen>
         _levelPoints -= cfg.pointsToNext;
         _level++;
         levelUp = true;
-        _showLevelUp = true;
       }
     });
-    if (levelUp) {
+
+    // Thăng hạng: chỉ xét khi đang chơi ở hạng cao nhất đã mở khóa.
+    final rank = rankAt(_rank);
+    if (!_promoted && _rank == _app.maxRank && rank.canPromote(_level, _score)) {
+      _promoted = true;
+      _app.unlockRank(_rank + 1);
       HapticFeedback.mediumImpact();
-      Future.delayed(const Duration(milliseconds: 1400), () {
-        if (mounted) setState(() => _showLevelUp = false);
-      });
+      _app.sound.play(Sfx.record);
+      final next = rankAt(_rank + 1);
+      _showBanner('${next.emoji} ${context.tr('rankUp', {'rank': context.tr(next.key)})}');
+    } else if (levelUp) {
+      HapticFeedback.mediumImpact();
+      Future.delayed(const Duration(milliseconds: 120), () => _app.sound.play(Sfx.levelup));
+      _showBanner(context.tr('levelUp', {'level': _level}));
     }
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted || _over) return;
@@ -123,11 +138,19 @@ class _GameScreenState extends State<GameScreen>
     });
   }
 
+  void _showBanner(String text) {
+    setState(() => _banner = text);
+    Future.delayed(const Duration(milliseconds: 1600), () {
+      if (mounted && _banner == text) setState(() => _banner = null);
+    });
+  }
+
   void _gameOver(String reason) {
     if (_over) return;
     _timer.stop();
     _watch.stop();
     HapticFeedback.vibrate();
+    _app.sound.play(Sfx.wrong);
     setState(() {
       _over = true;
       _reason = reason;
@@ -140,16 +163,17 @@ class _GameScreenState extends State<GameScreen>
         correct: _correct,
         durationMs: _watch.elapsedMilliseconds,
         playedAt: DateTime.now(),
+        rank: _rank,
       );
-      final app = context.read<AppState>();
-      final previousBest = app.best;
-      final isRecord = app.recordResult(result);
+      final previousBest = _app.best;
+      final isRecord = _app.recordResult(result);
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (_) => ResultScreen(
           result: result,
           newRecord: isRecord,
           previousBest: previousBest,
           reason: reason,
+          promotedTo: _promoted ? _rank + 1 : null,
         ),
       ));
     });
@@ -224,7 +248,13 @@ class _GameScreenState extends State<GameScreen>
                       child: Stack(fit: StackFit.expand, children: [
                         Container(color: Colors.white.withValues(alpha: 0.35)),
                         ClimberView(step: _correct, character: character, fallen: _over),
-                        if (_showLevelUp) Center(child: _LevelUpBanner(level: _level)),
+                        if (_banner != null)
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: _Banner(text: _banner!),
+                            ),
+                          ),
                         if (_over)
                           Align(
                             alignment: Alignment.topCenter,
@@ -262,7 +292,9 @@ class _GameScreenState extends State<GameScreen>
           ),
         ),
         const SizedBox(width: 8),
-        Pill(text: '${context.tr('level')} $_level', color: AppColors.purple),
+        Pill(text: rankAt(_rank).emoji, color: rankAt(_rank).color),
+        const SizedBox(width: 6),
+        Pill(text: 'Lv $_level', color: AppColors.purple),
         const Spacer(),
         if (_correct > 0)
           TweenAnimationBuilder<double>(
@@ -368,7 +400,7 @@ class _GameScreenState extends State<GameScreen>
   }
 
   Widget _levelProgress() {
-    final goal = LevelConfig(_level).pointsToNext;
+    final goal = LevelConfig(_level, rank: _rank).pointsToNext;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
       child: Row(children: [
@@ -471,13 +503,14 @@ class _TimerBar extends StatelessWidget {
   }
 }
 
-class _LevelUpBanner extends StatelessWidget {
-  const _LevelUpBanner({required this.level});
-  final int level;
+class _Banner extends StatelessWidget {
+  const _Banner({super.key, required this.text});
+  final String text;
 
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
+      key: ValueKey(text),
       tween: Tween(begin: 0.3, end: 1),
       duration: const Duration(milliseconds: 600),
       curve: Curves.elasticOut,
@@ -489,9 +522,11 @@ class _LevelUpBanner extends StatelessWidget {
           borderRadius: BorderRadius.circular(30),
           border: Border.all(color: Colors.white, width: 4),
         ),
-        child: Text(context.tr('levelUp', {'level': level}),
-            style: const TextStyle(
-                color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
+        child: FittedBox(
+          child: Text(text,
+              style: const TextStyle(
+                  color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900)),
+        ),
       ),
     );
   }

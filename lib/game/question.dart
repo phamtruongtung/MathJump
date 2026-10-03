@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'rank.dart';
+
 enum Op { add, sub, mul, div }
 
 extension OpX on Op {
@@ -53,9 +55,11 @@ class Question {
 }
 
 /// Độ khó của từng level: phạm vi số, phép tính, thời gian và điểm cần để lên level.
+/// Phạm vi số giống nhau ở mọi hạng; hạng chỉ quyết định thời gian trả lời.
 class LevelConfig {
   final int level;
-  const LevelConfig(this.level);
+  final int rank;
+  const LevelConfig(this.level, {this.rank = 0});
 
   List<Op> get ops => switch (level) {
         1 => const [Op.add],
@@ -71,11 +75,11 @@ class LevelConfig {
   int get factorMax =>
       level <= 10 ? min(12, 2 + level) : min(20, 12 + (level - 10));
 
-  /// Số giây cho mỗi câu: 10s ở level 1, giảm 0.7s mỗi level, tối thiểu 3s.
-  double get timeLimit => max(3.0, 10.0 - (level - 1) * 0.7);
+  /// Số giây cho mỗi câu, theo hạng (xem [kRanks]).
+  double get timeLimit => rankAt(rank).timeFor(level);
 
-  /// Điểm cần tích lũy trong level này để lên level kế tiếp.
-  int get pointsToNext => 50 + (level - 1) * 30;
+  /// Điểm cần tích lũy trong level này để lên level kế tiếp: 30, 40, 50, ...
+  int get pointsToNext => 30 + (level - 1) * 10;
 
   double get operatorQuestionChance => level <= 1 ? 0.15 : 0.25;
 }

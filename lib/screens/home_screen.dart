@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -86,6 +87,7 @@ class HomeScreen extends StatelessWidget {
                                 spacing: 8,
                                 runSpacing: 6,
                                 children: [
+                                  Pill(text: rankAt(best.rank).emoji, color: rankAt(best.rank).color),
                                   Pill(text: '⭐ ${best.score}', color: AppColors.orange),
                                   Pill(text: '${context.tr('level')} ${best.level}', color: AppColors.purple),
                                   Pill(
@@ -96,7 +98,9 @@ class HomeScreen extends StatelessWidget {
                             ]),
                     ),
                     const Spacer(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
+                    const _RankCard(),
+                    const SizedBox(height: 16),
                     SizedBox(
                       height: 84,
                       width: double.infinity,
@@ -152,4 +156,120 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+String _fmtSec(double v) => v == v.roundToDouble() ? '${v.round()}' : v.toStringAsFixed(1);
+
+/// Thẻ hạng đang chọn + mục tiêu thăng hạng. Bấm để đổi hạng.
+class _RankCard extends StatelessWidget {
+  const _RankCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    final r = rankAt(s.selectedRank);
+    final String goal;
+    if (r.isTop) {
+      goal = context.tr('topRank');
+    } else if (s.selectedRank < s.maxRank) {
+      goal = context.tr('rankTime', {'start': _fmtSec(r.startTime), 'end': _fmtSec(r.endTime)});
+    } else {
+      goal = context.tr('nextRankGoal', {
+        'rank': context.tr(rankAt(r.index + 1).key),
+        'level': r.promoteLevel,
+        'score': r.promoteScore,
+      });
+    }
+    return GestureDetector(
+      onTap: () => _showRankPicker(context),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: r.color, width: 3),
+        ),
+        child: Row(children: [
+          Text(r.emoji, style: const TextStyle(fontSize: 34)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('${context.tr('rank')} ${context.tr(r.key)}',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: r.color)),
+              Text(goal, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+          const Icon(Icons.unfold_more_rounded, color: AppColors.ink),
+        ]),
+      ),
+    );
+  }
+}
+
+void _showRankPicker(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (c) {
+      final s = c.watch<AppState>();
+      return SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          children: [
+            Text(c.tr('chooseRank'),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            for (final r in kRanks)
+              Builder(builder: (_) {
+                final unlocked = r.index <= s.maxRank;
+                final selected = r.index == s.selectedRank;
+                final prev = r.index == 0 ? null : rankAt(r.index - 1);
+                final subtitle = unlocked
+                    ? c.tr('rankTime', {'start': _fmtSec(r.startTime), 'end': _fmtSec(r.endTime)})
+                    : c.tr('rankLocked', {
+                        'level': prev!.promoteLevel,
+                        'score': prev.promoteScore,
+                        'rank': c.tr(prev.key),
+                      });
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Opacity(
+                    opacity: unlocked ? 1 : 0.55,
+                    child: Material(
+                      color: selected ? r.color.withValues(alpha: 0.18) : AppColors.cream,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        side: BorderSide(color: selected ? r.color : Colors.transparent, width: 3),
+                      ),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        leading: Text(r.emoji, style: const TextStyle(fontSize: 30)),
+                        title: Text(c.tr(r.key),
+                            style: TextStyle(fontWeight: FontWeight.w900, color: r.color, fontSize: 18)),
+                        subtitle: Text(subtitle),
+                        trailing: selected
+                            ? Icon(Icons.check_circle_rounded, color: r.color)
+                            : unlocked
+                                ? null
+                                : const Icon(Icons.lock_rounded),
+                        onTap: unlocked
+                            ? () {
+                                s.setSelectedRank(r.index);
+                                Navigator.pop(c);
+                              }
+                            : null,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+          ],
+        ),
+      );
+    },
+  );
 }

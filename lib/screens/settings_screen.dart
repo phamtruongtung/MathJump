@@ -48,27 +48,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     spacing: 10,
                     runSpacing: 10,
                     children: [
-                      for (final c in kCharacters)
+                      for (final z in kZodiac)
                         GestureDetector(
-                          onTap: () => s.setCharacter(c),
+                          onTap: () => s.setCharacter(z.emoji),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            width: 58,
-                            height: 58,
-                            alignment: Alignment.center,
+                            width: 68,
+                            padding: const EdgeInsets.symmetric(vertical: 6),
                             decoration: BoxDecoration(
-                              color: s.character == c ? AppColors.sun : AppColors.cream,
+                              color: s.character == z.emoji ? AppColors.sun : AppColors.cream,
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                color: s.character == c ? AppColors.orange : Colors.transparent,
+                                color: s.character == z.emoji ? AppColors.orange : Colors.transparent,
                                 width: 3,
                               ),
                             ),
-                            child: Text(c, style: const TextStyle(fontSize: 32)),
+                            child: Column(children: [
+                              Text(z.emoji, style: const TextStyle(fontSize: 32)),
+                              Text(context.lang == 'vi' ? z.vi : z.en,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                            ]),
                           ),
                         ),
                     ],
                   ),
+                ),
+                _section(
+                  '🔊 ${context.tr('sound')}',
+                  Column(children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(context.tr('music'),
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      secondary: const Text('🎵', style: TextStyle(fontSize: 24)),
+                      value: s.sound.musicOn,
+                      onChanged: s.setMusicOn,
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(context.tr('sfx'),
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      secondary: const Text('🔔', style: TextStyle(fontSize: 24)),
+                      value: s.sound.sfxOn,
+                      onChanged: s.setSfxOn,
+                    ),
+                  ]),
                 ),
                 if (p != null && p.isGuest)
                   _section(

@@ -7,6 +7,7 @@ import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/cloud_service.dart';
 import 'services/local_store.dart';
+import 'services/sound_service.dart';
 import 'state/app_state.dart';
 import 'theme.dart';
 
@@ -18,7 +19,7 @@ Future<void> main() async {
   await store.init();
   final cloud = CloudService();
   await cloud.init(); // không có cấu hình Firebase vẫn chạy được (offline/khách)
-  final state = AppState(store, cloud);
+  final state = AppState(store, cloud, SoundService());
   await state.init();
 
   runApp(ChangeNotifierProvider.value(value: state, child: const MathJumpApp()));

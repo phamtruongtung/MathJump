@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:math_jump/game/question.dart';
+import 'package:math_jump/game/rank.dart';
 
 void main() {
   test('every generated question has exactly one correct choice', () {
@@ -30,6 +31,28 @@ void main() {
         }).length;
         expect(valid, 1, reason: '${q.a} ${q.op.symbol} ${q.b} = ${q.c} missing ${q.missing}');
       }
+    }
+  });
+
+  test('ranks: lower rank gives more time, promotion is reachable', () {
+    expect(const LevelConfig(1, rank: 0).timeLimit, 30);
+    expect(const LevelConfig(1, rank: 1).timeLimit, 20);
+    for (var r = 0; r < kRanks.length; r++) {
+      for (var l = 1; l < 40; l++) {
+        final t = LevelConfig(l, rank: r).timeLimit;
+        expect(t, lessThanOrEqualTo(LevelConfig(l - 1 < 1 ? 1 : l - 1, rank: r).timeLimit));
+        expect(t, greaterThanOrEqualTo(kRanks[r].endTime));
+        if (r > 0) expect(t, lessThan(LevelConfig(l, rank: r - 1).timeLimit));
+      }
+      final rank = kRanks[r];
+      if (rank.isTop) continue;
+      // Điểm tối thiểu (10/câu) và tối đa (15/câu) khi vừa chạm level thăng hạng.
+      var minPts = 0;
+      for (var l = 1; l < rank.promoteLevel!; l++) {
+        minPts += LevelConfig(l, rank: r).pointsToNext;
+      }
+      expect(rank.promoteScore, greaterThanOrEqualTo(minPts));
+      expect(rank.promoteScore, lessThan(minPts * 1.5));
     }
   });
 

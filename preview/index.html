@@ -81,6 +81,7 @@
       <span class="pill" style="--c:var(--orange)" id="bestScore">⭐ 0</span><span class="pill" style="--c:var(--purple)" id="bestLevel">Level 1</span></div>
     </div>
     <div style="flex:1"></div>
+    <div id="rankCard" onclick="cycleRank()" style="display:flex;align-items:center;gap:10px;background:#fff;border:3px solid;border-radius:22px;padding:8px 12px;margin-bottom:14px;cursor:pointer"></div>
     <div class="btn" style="background:var(--green);height:80px;font-size:36px;border-radius:30px;--shade:#2b8a3e" onclick="startGame()">▶ <span data-t="play"></span></div>
     <div class="row" style="margin-top:12px">
       <div class="btn" style="flex:1;height:84px;flex-direction:column;font-size:15px;gap:2px;background:var(--orange);--shade:#d9760c" onclick="go('rank')"><span style="font-size:28px">🏆</span><span data-t="rank"></span></div>
@@ -141,14 +142,24 @@
 const S={vi:{tagline:'Nhảy lên cùng những con số!',fb:'Đăng nhập bằng Facebook',guest:'Chơi ngay (không đăng nhập)',guestNote:'Chế độ khách chỉ lưu trên máy này.',hello:'Xin chào, Bé Bin!',online:'Trực tuyến',best:'Kỷ lục',play:'CHƠI',rank:'Xếp hạng',friends:'Bạn bè',settings:'Cài đặt',newRecord:'KỶ LỤC MỚI!',score:'Điểm',time:'Thời gian sống',correct:'Phép tính đúng',share:'Khoe lên Facebook',again:'Chơi lại',home:'Trang chủ',mine:'Của tôi',timeUp:'Hết giờ rồi! ⏰',wrong:'Ôi, sai mất rồi! 😵',congrats:'Chúc mừng! Kỷ lục mới 🎉',copied:'Đã sao chép lời khoe — dán vào bài đăng Facebook nhé!\n\n🎉 Mình vừa đạt điểm cao trong Math Jump! Ai dám thách đấu không? 😎',you:'(bạn)',sec:'giây',cap:'Bản xem trước HTML mô phỏng giao diện app. Bấm thử để chơi; nút ⚙️ đổi nhân vật.'},
 en:{tagline:'Jump higher with numbers!',fb:'Continue with Facebook',guest:'Play as guest',guestNote:'Guest mode saves on this device only.',hello:'Hi, Bin!',online:'Online',best:'Best',play:'PLAY',rank:'Ranking',friends:'Friends',settings:'Settings',newRecord:'NEW RECORD!',score:'Score',time:'Survival time',correct:'Correct answers',share:'Share on Facebook',again:'Play again',home:'Home',mine:'My games',timeUp:"Time's up! ⏰",wrong:'Oops, wrong answer! 😵',congrats:'Congratulations! New record 🎉',copied:'Caption copied — paste it into your Facebook post!\n\n🎉 I just set a high score in Math Jump! Who dares to challenge me? 😎',you:'(you)',sec:'s',cap:'HTML preview imitating the app UI. Tap to play; ⚙️ changes the character.'}};
 let lang='vi';const T=()=>S[lang];
-function applyLang(){document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T()[e.dataset.t]);document.getElementById('cap').textContent=T().cap;document.querySelectorAll('.lang span').forEach(s=>s.classList.toggle('on',s.dataset.l===lang))}
+function applyLang(){if(document.getElementById('rankCard'))renderRankCard();document.querySelectorAll('[data-t]').forEach(e=>e.textContent=T()[e.dataset.t]);document.getElementById('cap').textContent=T().cap;document.querySelectorAll('.lang span').forEach(s=>s.classList.toggle('on',s.dataset.l===lang))}
 document.querySelectorAll('.lang span').forEach(s=>s.onclick=()=>{lang=s.dataset.l;applyLang()});
 function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id));if(id==='rank')renderRank();if(id!=='game')stopTimer()}
-const heroes=['🐸','🐰','🐱','🐶','🐼','🦊','🐵','🐧','🦄','🐯'];let hero=0;
+const heroes=['🐭','🐃','🐯','🐱','🐲','🐍','🐴','🐐','🐵','🐔','🐶','🐷'];let hero=6;
 function cycleHero(){hero=(hero+1)%heroes.length;document.querySelectorAll('.hero-emoji').forEach(e=>e.textContent=heroes[hero])}
+const RANKS=[['🥉','Đồng','Bronze','#CD7F32',30,15,10,700],['🥈','Bạc','Silver','#8E9AAF',20,10,12,1000],['🥇','Vàng','Gold','#F2B705',15,7,14,1300],['💠','Bạch Kim','Platinum','#3BC9DB',10,5,16,1650],['💎','Kim Cương','Diamond','#7950F2',8,4,18,2050],['👑','Huyền Thoại','Legend','#E8590C',6,3,0,0]];
+let maxRank=0,selRank=0;
+const rankTime=(r,l)=>{const R=RANKS[r];return Math.max(R[5],R[4]-(R[4]-R[5])*(l-1)/19)};
+function renderRankCard(){const R=RANKS[selRank];const c=document.getElementById('rankCard');c.style.borderColor=R[3];
+ const goal=selRank===5?(lang==='vi'?'Bạn đang ở hạng cao nhất! 👑':'You are at the top rank! 👑'):selRank<maxRank?`⏱️ ${R[4]}s → ${R[5]}s`:(lang==='vi'?`Lên hạng ${RANKS[selRank+1][1]}: Level ${R[6]} và ${R[7]} điểm trong một ván`:`Rank up to ${RANKS[selRank+1][2]}: Level ${R[6]} with ${R[7]} points`);
+ c.innerHTML=`<span style="font-size:32px">${R[0]}</span><div style="flex:1"><b style="color:${R[3]};font-size:17px">${lang==='vi'?'Hạng':'Rank'} ${lang==='vi'?R[1]:R[2]}</b><br><small style="font-weight:600">${goal}</small></div><span style="font-size:20px">⇅</span>`}
+function cycleRank(){selRank=(selRank+1)%(maxRank+1);renderRankCard()}
+const snd={};['music','correct','wrong','levelup','record'].forEach(n=>{snd[n]=new Audio((window.AUD&&AUD[n])||('../assets/audio/'+n+'.wav'))});snd.music.loop=true;snd.music.volume=.35;
+function sfx(n){try{const a=snd[n].cloneNode();a.play()}catch(e){}}
+function music(){if(snd.music.paused)snd.music.play().catch(()=>{})}
 
 const OPS=['+','−','×','÷'];const ap=(o,a,b)=>o==='+'?a+b:o==='−'?a-b:o==='×'?a*b:(b&&a%b===0?a/b:null);
-const cfg=l=>({ops:OPS.slice(0,Math.min(4,l)),add:10+(l-1)*15,fac:l<=10?Math.min(12,2+l):Math.min(20,12+l-10),time:Math.max(3,10-(l-1)*.7),goal:50+(l-1)*30});
+const cfg=l=>({ops:OPS.slice(0,Math.min(4,l)),add:10+(l-1)*15,fac:l<=10?Math.min(12,2+l):Math.min(20,12+l-10),time:rankTime(G?G.rank:selRank,l),goal:30+(l-1)*10});
 const R=n=>Math.floor(Math.random()*n);
 function gen(l){const c=cfg(l);for(;;){const op=c.ops[R(c.ops.length)];let a,b,r;
  if(op==='+'){a=R(c.add+1);b=R(c.add-a+1);r=a+b}else if(op==='−'){a=R(c.add+1);b=R(a+1);r=a-b}else if(op==='×'){a=2+R(c.fac-1);b=2+R(c.fac-1);r=a*b}else{b=2+R(c.fac-1);r=1+R(c.fac);a=b*r}
@@ -158,7 +169,7 @@ function gen(l){const c=cfg(l);for(;;){const op=c.ops[R(c.ops.length)];let a,b,r
  return{a,b,r,op,miss,ans:String(v),ch:[...set].map(String).sort(()=>Math.random()-.5)}}}
 
 let G,tid,best=0;const cols=['var(--orange)','var(--blue)','var(--pink)','var(--purple)'];
-function startGame(){G={level:1,score:0,lp:0,correct:0,t0:Date.now(),over:false};go('game');buildStage();next()}
+function startGame(){music();G={level:1,score:0,lp:0,correct:0,t0:Date.now(),over:false,rank:selRank,promoted:false};go('game');buildStage();next()}
 function next(){G.q=gen(G.level);G.picked=null;G.limit=cfg(G.level).time*1000;G.qs=Date.now();render();stopTimer();tid=setInterval(tick,50)}
 function stopTimer(){clearInterval(tid)}
 function tick(){const rem=Math.max(0,1-(Date.now()-G.qs)/G.limit);const bar=document.getElementById('tbar');bar.style.width=rem*100+'%';
@@ -171,11 +182,15 @@ function render(){const q=G.q,rev=G.picked===q.ans||G.over;
  document.getElementById('gLevel').textContent='Level '+G.level;document.getElementById('gScore').textContent='⭐ '+G.score;
  const goal=cfg(G.level).goal;document.getElementById('pbar').style.width=Math.min(100,G.lp/goal*100)+'%';document.getElementById('ptext').textContent=G.lp+'/'+goal}
 function pick(c){if(G.over||G.picked)return;G.picked=c;if(c!==G.q.ans){render();return over('wrong')}
- stopTimer();const rem=1-(Date.now()-G.qs)/G.limit;const gain=10+Math.round(rem*5);G.score+=gain;G.lp+=gain;G.correct++;
+ stopTimer();sfx('correct');const rem=1-(Date.now()-G.qs)/G.limit;const gain=10+Math.round(rem*5);G.score+=gain;G.lp+=gain;G.correct++;
  const g=document.getElementById('gain');g.textContent='+'+gain;setTimeout(()=>g.textContent='',700);
- if(G.lp>=cfg(G.level).goal){G.lp-=cfg(G.level).goal;G.level++;const b=document.createElement('div');b.className='banner';b.textContent=`LEVEL ${G.level}! 🚀`;document.getElementById('stage').appendChild(b);setTimeout(()=>b.remove(),1300)}
+ let up=false;if(G.lp>=cfg(G.level).goal){G.lp-=cfg(G.level).goal;G.level++;up=true}
+ const R=RANKS[G.rank];let text=null;
+ if(!G.promoted&&G.rank===maxRank&&G.rank<5&&G.level>=R[6]&&G.score>=R[7]){G.promoted=true;maxRank=selRank=G.rank+1;sfx('record');text=`${RANKS[maxRank][0]} ${lang==='vi'?'THĂNG HẠNG':'RANK UP'} ${lang==='vi'?RANKS[maxRank][1]:RANKS[maxRank][2]}!`}
+ else if(up){setTimeout(()=>sfx('levelup'),120);text=`LEVEL ${G.level}! 🚀`}
+ if(text){const b=document.createElement('div');b.className='banner';b.textContent=text;document.getElementById('stage').appendChild(b);setTimeout(()=>b.remove(),1500)}
  render();jump();setTimeout(()=>{if(!G.over)next()},320)}
-function over(reason){if(G.over)return;G.over=true;stopTimer();render();G.reason=reason;
+function over(reason){if(G.over)return;G.over=true;stopTimer();sfx('wrong');render();G.reason=reason;
  const h=document.getElementById('hero');h.style.transform='rotate(30deg)';h.textContent=heroes[hero]+'💫';
  const b=document.createElement('div');b.className='banner';b.style.background='var(--red)';b.style.fontSize='22px';b.textContent=T()[reason];document.getElementById('stage').appendChild(b);
  setTimeout(showResult,1600)}
@@ -184,7 +199,7 @@ function showResult(){const rec=G.score>0&&G.score>best;if(rec)best=G.score;
  document.getElementById('rScore').textContent=G.score;document.getElementById('rLevel').textContent=G.level;document.getElementById('rCorrect').textContent=G.correct;
  document.getElementById('rTime').textContent=((Date.now()-G.t0-1600)/1000).toFixed(1)+' '+T().sec;
  document.getElementById('bestScore').textContent='⭐ '+best;document.getElementById('bestLevel').textContent='Level '+Math.max(G.level,1);
- go('result');if(rec)confetti()}
+ renderRankCard();go('result');if(rec||G.promoted){confetti();sfx('record')}}
 
 const XF=[.22,.5,.78,.5];
 function buildStage(){const st=document.getElementById('stage');st.innerHTML='<div id="ground" style="position:absolute;left:0;right:0;height:400px;background:var(--grass);border-top:14px solid var(--grass);box-shadow:inset 0 14px 0 var(--grass);transition:top .42s ease-in-out"></div>';
@@ -200,7 +215,8 @@ function renderRank(){const rows=[['An','🥇',Math.max(best,260),7],['Bé Bin '
  document.getElementById('rankList').innerHTML=rows.map((r,i)=>`<div class="card rank" style="${r[4]?'background:#FFF3BF':''}"><b style="width:30px;text-align:center;font-size:22px">${['🥇','🥈','🥉'][i]||i+1}</b><div class="av">${r[0][0]}</div><div style="flex:1"><b>${r[0]}</b><br><small style="opacity:.7">Level ${r[3]}</small></div><b style="color:var(--orange);font-size:19px">⭐ ${r[2]}</b></div>`).join('')}
 function confetti(){const box=document.getElementById('confetti');const c=['#FF7EB3','#FFD43B','#4DABF7','#40C057','#9775FA','#FF9F43'];
  for(let i=0;i<70;i++){const d=document.createElement('div');d.className='conf';d.style.left=Math.random()*340+'px';d.style.background=c[i%6];d.style.animationDelay=Math.random()*.8+'s';box.appendChild(d);setTimeout(()=>d.remove(),3600)}}
-applyLang();
+applyLang();hero=5;cycleHero();
+document.getElementById('login').addEventListener('click',music,{once:true});
 function fit(){const s=Math.min(1,(innerHeight-70)/760,(innerWidth-20)/380);const p=document.getElementById('phone');p.style.transform=`scale(${s})`;p.style.transformOrigin='top center';p.parentElement.style.height=(760*s+40)+'px';p.parentElement.style.width=(380*s)+'px';p.style.marginLeft=((380*s-380)/2)+'px'}
 addEventListener('resize',fit);fit();
 </script>
