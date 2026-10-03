@@ -20,9 +20,11 @@ jobs:
           channel: stable
           cache: true
 
+      # Sinh các file Android còn thiếu (không ghi đè file đã có trong repo).
       - name: Create Android platform files
         run: flutter create --org com.mathjump --project-name math_jump --platforms android .
 
+      # Firebase Auth cần minSdk 23.
       - name: Set minSdk 23
         run: |
           if [ -f android/app/build.gradle.kts ]; then
@@ -31,6 +33,7 @@ jobs:
             sed -i -E 's/minSdkVersion +flutter\.minSdkVersion/minSdkVersion 23/' android/app/build.gradle
           fi
 
+      # Bật Firebase khi đã có android/app/google-services.json trong repo.
       - name: Enable Google Services plugin
         if: hashFiles('android/app/google-services.json') != ''
         run: |
@@ -40,6 +43,8 @@ jobs:
           grep -q 'google-services' android/app/build.gradle.kts
           echo "Google Services plugin enabled"
 
+      # Ký app bằng khóa cố định (secret KEYSTORE_BASE64) để key hash Facebook
+      # không đổi và bản mới cài đè được lên bản cũ.
       - name: Use fixed signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -80,6 +85,7 @@ jobs:
           name: MathJump-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
+      # In chữ ký thật của APK và key hash Facebook tương ứng.
       - name: Show APK signature
         run: |
           APKSIGNER=$(ls -d $ANDROID_HOME/build-tools/*/apksigner | sort -V | tail -1)
