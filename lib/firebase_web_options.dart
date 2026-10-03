@@ -1,16 +1,16 @@
 import 'package:firebase_core/firebase_core.dart';
 
 /// Cấu hình Firebase cho bản web (Firebase Console → Project settings →
-/// Your apps → Web app → SDK setup and configuration → Config).
-/// Các giá trị này là công khai, được phép nằm trong mã nguồn.
-/// Còn để REPLACE thì bản web chạy ở chế độ khách (không đăng nhập).
+/// Your apps → Math Jump Web). Các giá trị này là công khai, được phép nằm
+/// trong mã nguồn; dữ liệu được bảo vệ bằng firestore.rules.
 const webFirebaseOptions = FirebaseOptions(
-  apiKey: 'REPLACE',
-  appId: 'REPLACE',
-  messagingSenderId: 'REPLACE',
-  projectId: 'REPLACE',
-  authDomain: 'REPLACE',
-  storageBucket: 'REPLACE',
+  apiKey: 'AIzaSyDuZqpU2OsdyD87bBZuLIhyekV_gMAme3M',
+  appId: '1:646653196426:web:6d060def2aa22a7488d573',
+  messagingSenderId: '646653196426',
+  projectId: 'mathjump-861ff',
+  authDomain: 'mathjump-861ff.firebaseapp.com',
+  storageBucket: 'mathjump-861ff.firebasestorage.app',
+  measurementId: 'G-MW576D1YBD',
 );
 
 bool get webFirebaseConfigured => webFirebaseOptions.apiKey != 'REPLACE';
