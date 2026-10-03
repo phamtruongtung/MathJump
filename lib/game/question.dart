@@ -54,41 +54,55 @@ class Question {
       a == o.a && b == o.b && c == o.c && op == o.op && missing == o.missing;
 }
 
-/// Độ khó của từng level: phạm vi số, phép tính, thời gian và điểm cần để lên level.
-/// Phạm vi số giống nhau ở mọi hạng; hạng chỉ quyết định thời gian trả lời.
+/// Độ khó của một level trong một hạng: phép tính, phạm vi số, thời gian và
+/// điểm cần để lên level. Thông số theo hạng nằm trong [kRanks].
 class LevelConfig {
   final int level;
   final int rank;
   const LevelConfig(this.level, {this.rank = 0});
 
-  List<Op> get ops => switch (level) {
-        1 => const [Op.add],
-        2 => const [Op.add, Op.sub],
-        3 => const [Op.add, Op.sub, Op.mul],
-        _ => Op.values,
-      };
+  Rank get _r => rankAt(rank);
 
-  /// Giới hạn trên cho phép cộng/trừ: 10, 25, 40, 55, ...
-  int get addMax => 10 + (level - 1) * 15;
+  /// Tỉ lệ xuất hiện của + − × ÷ (theo thứ tự [Op.values]).
+  List<int> get weights => _r.weightsAt(level);
 
-  /// Thừa số lớn nhất cho nhân/chia: lv3 → 5, lv10 → 12, sau đó tăng dần tới 20.
-  int get factorMax =>
-      level <= 10 ? min(12, 2 + level) : min(20, 12 + (level - 10));
+  /// Các phép tính có thể xuất hiện ở level này.
+  List<Op> get ops => [
+        for (var i = 0; i < Op.values.length; i++)
+          if (weights[i] > 0) Op.values[i],
+      ];
 
-  /// Số giây cho mỗi câu, theo hạng (xem [kRanks]).
-  double get timeLimit => rankAt(rank).timeFor(level);
+  /// Kết quả lớn nhất của phép cộng / số bị trừ lớn nhất.
+  int get addMax => _r.addMaxAt(level);
+
+  /// Phạm vi thừa số cho nhân/chia.
+  int get factorMin => _r.factorMin;
+  int get factorMax => _r.factorMaxAt(level);
+
+  /// Số giây cho mỗi câu.
+  double get timeLimit => _r.timeFor(level);
 
   /// Điểm cần tích lũy trong level này để lên level kế tiếp: 30, 40, 50, ...
   int get pointsToNext => 30 + (level - 1) * 10;
 
-  double get operatorQuestionChance => level <= 1 ? 0.15 : 0.25;
+  double get operatorQuestionChance => rank == 0 || level <= 1 ? 0.15 : 0.25;
+
+  Op pickOp(Random rng) {
+    final w = weights;
+    var x = rng.nextInt(w.fold(0, (a, b) => a + b));
+    for (var i = 0; i < w.length; i++) {
+      if (x < w[i]) return Op.values[i];
+      x -= w[i];
+    }
+    return Op.add;
+  }
 }
 
 class QuestionGenerator {
-  static Question generate(int level, Random rng, {Question? avoid}) {
-    final cfg = LevelConfig(level);
+  static Question generate(int level, Random rng, {int rank = 0, Question? avoid}) {
+    final cfg = LevelConfig(level, rank: rank);
     while (true) {
-      final op = cfg.ops[rng.nextInt(cfg.ops.length)];
+      final op = cfg.pickOp(rng);
       final (a, b, c) = switch (op) {
         Op.add => _add(cfg, rng),
         Op.sub => _sub(cfg, rng),
@@ -131,15 +145,18 @@ class QuestionGenerator {
     return (a, b, a - b);
   }
 
+  static int _factor(LevelConfig cfg, Random rng) =>
+      cfg.factorMin + rng.nextInt(cfg.factorMax - cfg.factorMin + 1);
+
   static (int, int, int) _mul(LevelConfig cfg, Random rng) {
-    final a = 2 + rng.nextInt(cfg.factorMax - 1);
-    final b = 2 + rng.nextInt(cfg.factorMax - 1);
+    final a = _factor(cfg, rng);
+    final b = _factor(cfg, rng);
     return (a, b, a * b);
   }
 
   static (int, int, int) _div(LevelConfig cfg, Random rng) {
-    final b = 2 + rng.nextInt(cfg.factorMax - 1);
-    final c = 1 + rng.nextInt(cfg.factorMax);
+    final b = _factor(cfg, rng);
+    final c = _factor(cfg, rng);
     return (b * c, b, c);
   }
 

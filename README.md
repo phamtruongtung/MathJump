@@ -7,19 +7,20 @@ Game luyện cộng, trừ, nhân, chia cho trẻ em trên Android, viết bằn
 - Màn hình hiện một phép tính bị khuyết **một con số** hoặc **một dấu** (+ − × ÷), ví dụ `7 + ? = 12` hoặc `6 ? 3 = 2`.
 - Chọn 1 trong 4 đáp án trước khi hết giờ. Mỗi câu đúng, nhân vật **nhảy lên một bậc thang**.
 - Điểm mỗi câu: 10 điểm, cộng thêm tối đa 5 điểm nếu trả lời nhanh.
-- Đủ điểm thì **lên level**: số lớn hơn, nhiều phép tính hơn, ít thời gian hơn, và cần nhiều điểm hơn để lên level kế tiếp.
+- Đủ điểm thì **lên level** (cần 30, 40, 50… điểm): số lớn dần, thời gian ngắn dần, đạt mức khó nhất của hạng ở level 20.
 - Chọn sai hoặc hết giờ là **game over**. Màn kết quả hiện điểm, level, thời gian sống và số câu đúng. Có pháo giấy nếu lập kỷ lục mới.
+- Có **6 hạng**. Hạng càng thấp càng dễ. Đạt đủ level và điểm trong một ván thì thăng hạng.
 
-| Level | Phép tính | Phạm vi cộng/trừ | Thừa số nhân/chia | Thời gian/câu | Điểm để lên level |
-|------:|-----------|-----------------:|------------------:|--------------:|------------------:|
-| 1 | + | 0–10 | – | 10,0 s | 50 |
-| 2 | + − | 0–25 | – | 9,3 s | 80 |
-| 3 | + − × | 0–40 | 2–5 | 8,6 s | 110 |
-| 4 | + − × ÷ | 0–55 | 2–6 | 7,9 s | 140 |
-| 10 | + − × ÷ | 0–145 | 2–12 | 3,7 s | 320 |
-| 11+ | + − × ÷ | tăng dần | tối đa 2–20 | 3,0 s | +30 mỗi level |
+| Hạng | Cộng/trừ trong phạm vi | Thừa số nhân/chia | Tỉ lệ + − × ÷ | Thời gian/câu | Thăng hạng khi |
+|------|-----------------------:|------------------:|---------------|--------------:|----------------|
+| 🥉 Đồng | 10 → 100 | 2–5 → 2–9 (× từ lv4, ÷ từ lv6) | 40·40·12·8 | 30 → 15 s | Lv 10 + 700 điểm |
+| 🥈 Bạc | 20 → 200 | 2–9 → 2–10 | 35·35·18·12 | 20 → 10 s | Lv 12 + 1000 điểm |
+| 🥇 Vàng | 50 → 500 | 2–10 → 2–12 | 30·30·22·18 | 15 → 8 s | Lv 14 + 1300 điểm |
+| 💠 Bạch Kim | 100 → 1000 | 3–12 → 3–15 | 25·25·25·25 | 12 → 6 s | Lv 16 + 1650 điểm |
+| 💎 Kim Cương | 200 → 2000 | 4–15 → 4–20 | 25·25·25·25 | 10 → 5 s | Lv 18 + 2050 điểm |
+| 👑 Huyền Thoại | 500 → 5000 | 6–20 → 6–25 | 25·25·25·25 | 8 → 4 s | – |
 
-Có thể chỉnh các thông số này trong `LevelConfig` ([lib/game/question.dart](lib/game/question.dart)).
+Có thể chỉnh các thông số này trong `kRanks` ([lib/game/rank.dart](lib/game/rank.dart)).
 
 ## Tính năng
 

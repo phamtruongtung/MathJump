@@ -5,12 +5,25 @@ import 'package:math_jump/game/question.dart';
 import 'package:math_jump/game/rank.dart';
 
 void main() {
-  test('every generated question has exactly one correct choice', () {
+  test('every generated question has exactly one correct choice and fits its rank', () {
     final rng = Random(42);
-    for (var level = 1; level <= 20; level++) {
-      for (var i = 0; i < 500; i++) {
-        final q = QuestionGenerator.generate(level, rng);
+    for (var rank = 0; rank < kRanks.length; rank++) {
+     for (var level = 1; level <= 20; level++) {
+      final cfg = LevelConfig(level, rank: rank);
+      for (var i = 0; i < 300; i++) {
+        final q = QuestionGenerator.generate(level, rng, rank: rank);
         expect(q.op.apply(q.a, q.b), q.c, reason: 'equation must hold');
+        expect(cfg.ops, contains(q.op));
+        switch (q.op) {
+          case Op.add:
+            expect(q.c, lessThanOrEqualTo(cfg.addMax));
+          case Op.sub:
+            expect(q.a, lessThanOrEqualTo(cfg.addMax));
+          case Op.mul:
+            expect([q.a, q.b].every((f) => f >= cfg.factorMin && f <= cfg.factorMax), isTrue);
+          case Op.div:
+            expect([q.b, q.c].every((f) => f >= cfg.factorMin && f <= cfg.factorMax), isTrue);
+        }
         expect(q.choices.length, 4);
         expect(q.choices.toSet().length, 4);
         expect(q.choices, contains(q.answer));
@@ -31,7 +44,29 @@ void main() {
         }).length;
         expect(valid, 1, reason: '${q.a} ${q.op.symbol} ${q.b} = ${q.c} missing ${q.missing}');
       }
+     }
     }
+  });
+
+  test('higher rank means bigger numbers; low ranks are mostly + and −', () {
+    for (var r = 1; r < kRanks.length; r++) {
+      for (final l in [1, 10, 20]) {
+        expect(LevelConfig(l, rank: r).addMax, greaterThan(LevelConfig(l, rank: r - 1).addMax));
+        expect(LevelConfig(l, rank: r).factorMax,
+            greaterThanOrEqualTo(LevelConfig(l, rank: r - 1).factorMax));
+      }
+    }
+    for (final r in [0, 1]) {
+      final w = LevelConfig(20, rank: r).weights;
+      expect(w[0] + w[1], greaterThan(w[2] + w[3]));
+    }
+    // Hạng Đồng: level 1 chỉ có cộng; nhân từ level 4, chia từ level 6.
+    expect(const LevelConfig(1).ops, [Op.add]);
+    expect(const LevelConfig(3).ops, [Op.add, Op.sub]);
+    expect(const LevelConfig(4).ops, [Op.add, Op.sub, Op.mul]);
+    expect(const LevelConfig(6).ops, Op.values);
+    expect(const LevelConfig(1, rank: 1).ops, [Op.add, Op.sub]);
+    expect(const LevelConfig(1, rank: 2).ops, Op.values);
   });
 
   test('ranks: lower rank gives more time, promotion is reachable', () {
@@ -60,7 +95,5 @@ void main() {
     expect(const LevelConfig(5).addMax, greaterThan(const LevelConfig(1).addMax));
     expect(const LevelConfig(5).timeLimit, lessThan(const LevelConfig(1).timeLimit));
     expect(const LevelConfig(5).pointsToNext, greaterThan(const LevelConfig(1).pointsToNext));
-    expect(const LevelConfig(1).ops, [Op.add]);
-    expect(const LevelConfig(4).ops, Op.values);
   });
 }

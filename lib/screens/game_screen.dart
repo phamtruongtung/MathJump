@@ -54,7 +54,7 @@ class _GameScreenState extends State<GameScreen>
       ..addStatusListener((st) {
         if (st == AnimationStatus.completed && !_over) _gameOver('timeUp');
       });
-    _q = QuestionGenerator.generate(_level, _rng);
+    _q = QuestionGenerator.generate(_level, _rng, rank: _rank);
     _watch.start();
     _startTimer();
   }
@@ -80,7 +80,7 @@ class _GameScreenState extends State<GameScreen>
 
   void _nextQuestion() {
     setState(() {
-      _q = QuestionGenerator.generate(_level, _rng, avoid: _q);
+      _q = QuestionGenerator.generate(_level, _rng, rank: _rank, avoid: _q);
       _picked = null;
     });
     _startTimer();

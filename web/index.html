@@ -18,8 +18,50 @@
   <meta name="theme-color" content="#8FD3FF">
   <title>Math Jump</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    body { margin: 0; background: linear-gradient(#8FD3FF, #D9F2FF 60%, #FFF6E0); min-height: 100vh;
+      font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; color: #3B3355; }
+    #loader { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; text-align: center; padding: 24px; gap: 12px; }
+    #loader img { width: 112px; height: 112px; border-radius: 26px; animation: jump .7s ease-in-out infinite alternate; }
+    #loader h1 { margin: 0; color: #9775FA; font-size: 34px; font-weight: 900; }
+    #loader p { margin: 0; font-size: 17px; font-weight: 600; }
+    #help { display: none; max-width: 340px; background: #fff; border-radius: 18px; padding: 14px 16px;
+      font-size: 15px; line-height: 1.5; text-align: left; }
+    @keyframes jump { to { transform: translateY(-16px); } }
+  </style>
 </head>
-<body style="margin:0;background:#8FD3FF">
+<body>
+  <div id="loader">
+    <img src="icons/Icon-192.png" alt="">
+    <h1>Math Jump</h1>
+    <p id="status">Đang tải… / Loading…</p>
+    <div id="help">
+      <b>Tải lâu quá?</b><br>
+      • Nếu bạn mở link từ Zalo, Messenger hay Facebook: bấm <b>•••</b> → <b>Mở bằng Safari</b>
+        (hoặc copy link dán vào Safari).<br>
+      • Kiểm tra kết nối mạng rồi tải lại trang.<br>
+      • Cần iOS 15 trở lên (Cài đặt → Cài đặt chung → Giới thiệu).
+    </div>
+  </div>
+  <script>
+    function hideLoader() {
+      var l = document.getElementById('loader');
+      if (l) l.remove();
+    }
+    window.addEventListener('flutter-first-frame', hideLoader);
+    // Dự phòng: khi Flutter đã gắn khung vẽ vào trang thì ẩn màn hình chờ.
+    new MutationObserver(function (_, obs) {
+      if (document.querySelector('flutter-view, flt-glass-pane')) {
+        obs.disconnect();
+        setTimeout(hideLoader, 1500);
+      }
+    }).observe(document.body, { childList: true });
+    setTimeout(function () {
+      var h = document.getElementById('help');
+      if (h && document.getElementById('loader')) h.style.display = 'block';
+    }, 25000);
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
