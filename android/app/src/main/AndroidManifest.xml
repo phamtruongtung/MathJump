@@ -6,6 +6,7 @@
 
     <application
         android:label="Math Jump"
+        android:allowBackup="false"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
