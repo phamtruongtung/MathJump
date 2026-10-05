@@ -12,7 +12,20 @@
           "package_name": "com.mathjump.math_jump"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "646653196426-tkm7hirtc4hse3tgct57rnddhk198cv7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mathjump.math_jump",
+            "certificate_hash": "8a0964c9ebb1df022d0df8880b9e831743a60726"
+          }
+        },
+        {
+          "client_id": "646653196426-miar7j933imeb62ucmbq0rft9qqqutjl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDtc5W2e0Nb0tVBqgrmeKiB0vw_yEC_P7A"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "646653196426-miar7j933imeb62ucmbq0rft9qqqutjl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
