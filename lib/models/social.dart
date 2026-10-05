@@ -39,6 +39,7 @@ class FriendEntry {
     this.isMe = false,
   });
 
+  /// Đọc hồ sơ trên Firestore.
   factory FriendEntry.fromMap(String uid, Map<String, dynamic> m) =>
       FriendEntry(
         uid: uid,
@@ -47,8 +48,18 @@ class FriendEntry {
         bestScore: (m['bestScore'] as num?)?.toInt() ?? 0,
         bestLevel: (m['bestLevel'] as num?)?.toInt() ?? 0,
         bestTimeMs: (m['bestTimeMs'] as num?)?.toInt() ?? 0,
-        bestRank: (m['bestRank'] as num?)?.toInt() ?? 0,
+        bestRank: cloudTier(m, 'tierBest', 'bestRank'),
       );
+
+  /// Hạng lưu trên Firestore. Bản mới ghi trường `tier…` (Tân Binh = 0);
+  /// bản cũ ghi `bestRank`/`maxRank` với Đồng = 0 nên phải cộng 1.
+  static int cloudTier(Map<String, dynamic> m, String field, String legacyField) {
+    final v = m[field] as num?;
+    if (v != null) return v.toInt();
+    final old = m[legacyField] as num?;
+    if (old != null) return old.toInt() + 1;
+    return m['bestScore'] != null ? 1 : 0;
+  }
 
   Map<String, dynamic> toJson() => {
         'uid': uid,
@@ -60,8 +71,20 @@ class FriendEntry {
         'bestRank': bestRank,
       };
 
-  factory FriendEntry.fromJson(Map<String, dynamic> j) =>
-      FriendEntry.fromMap(j['uid'] as String, j);
+  /// Đọc bản lưu trên máy (đã đúng cách đánh số mới).
+  factory FriendEntry.fromJson(Map<String, dynamic> j) => FriendEntry(
+        uid: j['uid'] as String,
+        name: (j['name'] as String?) ?? '?',
+        photoUrl: j['photoUrl'] as String?,
+        bestScore: (j['bestScore'] as num?)?.toInt() ?? 0,
+        bestLevel: (j['bestLevel'] as num?)?.toInt() ?? 0,
+        bestTimeMs: (j['bestTimeMs'] as num?)?.toInt() ?? 0,
+        bestRank: (j['bestRank'] as num?)?.toInt() ?? 0,
+      );
+
+  /// Kỷ lục của người này cao hơn kỷ lục [score] ở hạng [rank] không.
+  bool beatsRecord(int rank, int score) =>
+      bestScore > 0 && (bestRank > rank || (bestRank == rank && bestScore > score));
 }
 
 class FriendRequest {

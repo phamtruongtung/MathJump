@@ -85,7 +85,7 @@ class LevelConfig {
   /// Điểm cần tích lũy trong level này để lên level kế tiếp: 30, 40, 50, ...
   int get pointsToNext => 30 + (level - 1) * 10;
 
-  double get operatorQuestionChance => rank == 0 || level <= 1 ? 0.15 : 0.25;
+  double get operatorQuestionChance => rank <= 1 || level <= 1 ? 0.15 : 0.25;
 
   Op pickOp(Random rng) {
     final w = weights;

@@ -6,6 +6,7 @@ import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 import 'login_screen.dart';
+import 'tutorial_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -157,8 +158,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 _section(
                   '📖 ${context.tr('howToPlay')}',
-                  Text(context.tr('howToPlayBody'),
-                      style: const TextStyle(fontSize: 15, height: 1.4)),
+                  Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    Text(context.tr('howToPlayBody'),
+                        style: const TextStyle(fontSize: 15, height: 1.4)),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 52,
+                      child: BubblyButton(
+                        color: AppColors.purple,
+                        fontSize: 17,
+                        onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const TutorialScreen())),
+                        child: Text('🎓 ${context.tr('tReplay')}'),
+                      ),
+                    ),
+                  ]),
                 ),
               ]),
             ),

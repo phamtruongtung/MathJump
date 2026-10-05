@@ -149,7 +149,7 @@ class CloudService {
       final snap = await tx.get(ref);
       final d = snap.data() ?? const <String, dynamic>{};
       final remoteGames = (d['gamesPlayed'] as num?)?.toInt() ?? 0;
-      final remoteMaxRank = (d['maxRank'] as num?)?.toInt() ?? 0;
+      final remoteMaxRank = FriendEntry.cloudTier(d, 'tierMax', 'maxRank');
       final hasRemote = d['bestScore'] != null;
       final remoteBest = !hasRemote
           ? null
@@ -159,11 +159,11 @@ class CloudService {
               correct: (d['bestCorrect'] as num?)?.toInt() ?? 0,
               durationMs: (d['bestTimeMs'] as num?)?.toInt() ?? 0,
               playedAt: (d['bestAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-              rank: (d['bestRank'] as num?)?.toInt() ?? 0,
+              rank: FriendEntry.cloudTier(d, 'tierBest', 'bestRank'),
             );
       final update = <String, dynamic>{
         'gamesPlayed': max(remoteGames, gamesPlayed),
-        'maxRank': max(remoteMaxRank, maxRank),
+        'tierMax': max(remoteMaxRank, maxRank),
         'updatedAt': FieldValue.serverTimestamp(),
       };
       GameResult? remoteBetter;
@@ -173,7 +173,7 @@ class CloudService {
           'bestLevel': localBest.level,
           'bestCorrect': localBest.correct,
           'bestTimeMs': localBest.durationMs,
-          'bestRank': localBest.rank,
+          'tierBest': localBest.rank,
           'bestAt': Timestamp.fromDate(localBest.playedAt),
         });
       } else if (remoteBest != null && remoteBest.beats(localBest)) {

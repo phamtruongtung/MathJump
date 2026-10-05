@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -30,6 +31,15 @@ class AppState extends ChangeNotifier {
   /// Hạng cao nhất đã mở khóa và hạng đang chọn để chơi.
   int maxRank = 0;
   int selectedRank = 0;
+
+  /// Bạn bè vừa vượt kỷ lục của mình (hiện thông báo ở trang chủ).
+  List<FriendEntry> overtakeAlerts = [];
+
+  // Lượt chơi: tối đa 3 lượt miễn phí, hồi 1 lượt mỗi 30 phút.
+  static const maxLives = 3;
+  static const lifeRegen = Duration(minutes: 30);
+  int _lives = maxLives;
+  DateTime? _livesSince;
   List<FriendEntry> friends = [];
   List<FriendRequest> incoming = [];
   DateTime? lastSync;
@@ -49,6 +59,9 @@ class AppState extends ChangeNotifier {
         ? saved!
         : zodiacOfYear(DateTime.now().year);
     await sound.init(musicOn: store.musicOn, sfxOn: store.sfxOn);
+    await store.migrateRanks(kRankSchemaVersion);
+    _lives = store.lives ?? maxLives;
+    _livesSince = store.livesSince;
 
     final user = cloud.currentUser;
     if (user != null) {
@@ -98,8 +111,10 @@ class AppState extends ChangeNotifier {
       friendCode = null;
       maxRank = 0;
       selectedRank = 0;
+      overtakeAlerts = [];
       return;
     }
+    overtakeAlerts = store.overtakeAlerts(p.id);
     history = store.history(p.id);
     best = store.best(p.id);
     gamesPlayed = store.gamesPlayed(p.id);
@@ -123,6 +138,106 @@ class AppState extends ChangeNotifier {
   Future<void> setCharacter(String v) async {
     character = v;
     await store.setCharacter(v);
+    notifyListeners();
+  }
+
+  // ---------------- Hướng dẫn ----------------
+
+  /// Người mới (chưa xem hướng dẫn, chưa chơi ván nào) thì tự mở hướng dẫn.
+  bool get shouldShowTutorial => !store.tutorialSeen && gamesPlayed == 0 && history.isEmpty;
+
+  /// Đánh dấu đã xem (gọi ngay khi mở, không notify vì có thể đang build).
+  void markTutorialSeen() => unawaited(store.setTutorialSeen());
+
+  // ---------------- Lượt chơi ----------------
+
+  int get lives {
+    _refillLives();
+    return _lives;
+  }
+
+  /// Thời gian còn lại tới khi hồi thêm 1 lượt (null khi đã đầy).
+  Duration? get nextLifeIn {
+    _refillLives();
+    final since = _livesSince;
+    if (since == null) return null;
+    final left = since.add(lifeRegen).difference(DateTime.now());
+    return left.isNegative ? Duration.zero : left;
+  }
+
+  void _refillLives() {
+    if (_lives >= maxLives) {
+      if (_livesSince != null) {
+        _livesSince = null;
+        unawaited(store.setLivesSince(null));
+      }
+      return;
+    }
+    final since = _livesSince ?? DateTime.now();
+    if (_livesSince == null) {
+      _livesSince = since;
+      unawaited(store.setLivesSince(since));
+    }
+    final gained = DateTime.now().difference(since).inMilliseconds ~/ lifeRegen.inMilliseconds;
+    if (gained <= 0) return;
+    _lives = min(maxLives, _lives + gained);
+    _livesSince = _lives >= maxLives ? null : since.add(lifeRegen * gained);
+    unawaited(store.setLives(_lives));
+    unawaited(store.setLivesSince(_livesSince));
+  }
+
+  /// Dùng 1 lượt để bắt đầu ván. false nếu đã hết lượt.
+  bool useLife() {
+    _refillLives();
+    if (_lives <= 0) return false;
+    _lives--;
+    if (_lives < maxLives) _livesSince ??= DateTime.now();
+    unawaited(store.setLives(_lives));
+    unawaited(store.setLivesSince(_livesSince));
+    notifyListeners();
+    return true;
+  }
+
+  /// Thưởng 1 lượt (sau khi xem quảng cáo). Có thể vượt quá 3 lượt.
+  void addLife() {
+    _refillLives();
+    _lives++;
+    if (_lives >= maxLives) _livesSince = null;
+    unawaited(store.setLives(_lives));
+    unawaited(store.setLivesSince(_livesSince));
+    notifyListeners();
+  }
+
+  // ---------------- Thông báo bạn bè ----------------
+
+  /// So kỷ lục bạn bè với lần đồng bộ trước: ai vừa vượt kỷ lục của mình thì báo.
+  /// Lần đồng bộ đầu tiên (chưa có dữ liệu cũ) và bạn mới kết bạn thì không báo.
+  void _checkOvertakes(String pid) {
+    final myRank = best?.rank ?? 0;
+    final myScore = best?.score ?? 0;
+    final seen = store.seenFriendBest(pid);
+    final next = <String, String>{};
+    final fresh = <FriendEntry>[];
+    for (final f in friends) {
+      final key = '${f.bestRank}:${f.bestScore}';
+      next[f.uid] = key;
+      final changed = seen != null && seen.containsKey(f.uid) && seen[f.uid] != key;
+      if (changed && f.beatsRecord(myRank, myScore)) fresh.add(f);
+    }
+    unawaited(store.setSeenFriendBest(pid, next));
+    if (fresh.isEmpty) return;
+    overtakeAlerts = [
+      ...overtakeAlerts.where((a) => !fresh.any((f) => f.uid == a.uid)),
+      ...fresh,
+    ];
+    unawaited(store.setOvertakeAlerts(pid, overtakeAlerts));
+  }
+
+  void dismissOvertakeAlerts() {
+    final p = profile;
+    if (p == null || overtakeAlerts.isEmpty) return;
+    overtakeAlerts = [];
+    unawaited(store.setOvertakeAlerts(p.id, overtakeAlerts));
     notifyListeners();
   }
 
@@ -232,7 +347,12 @@ class AppState extends ChangeNotifier {
     if (isRecord) best = r;
     unawaited(store.setHistory(p.id, history));
     unawaited(store.setGamesPlayed(p.id, gamesPlayed));
-    if (isRecord) unawaited(store.setBest(p.id, r));
+    if (isRecord) {
+      unawaited(store.setBest(p.id, r));
+      // Đã phục thù thành công: bỏ thông báo của những bạn mình vừa vượt lại.
+      overtakeAlerts = overtakeAlerts.where((f) => f.beatsRecord(r.rank, r.score)).toList();
+      unawaited(store.setOvertakeAlerts(p.id, overtakeAlerts));
+    }
     notifyListeners();
     unawaited(sync());
     return isRecord;
@@ -291,6 +411,7 @@ class AppState extends ChangeNotifier {
       }
       friends = await cloud.fetchFriends(p.id);
       await store.setFriends(p.id, friends);
+      _checkOvertakes(p.id);
       incoming = await cloud.fetchIncoming(p.id);
       lastSync = DateTime.now();
       await store.setLastSync(p.id, lastSync!);

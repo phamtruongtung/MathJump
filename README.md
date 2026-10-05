@@ -9,10 +9,12 @@ Game luyện cộng, trừ, nhân, chia cho trẻ em trên Android, viết bằn
 - Điểm mỗi câu: 10 điểm, cộng thêm tối đa 5 điểm nếu trả lời nhanh.
 - Đủ điểm thì **lên level** (cần 30, 40, 50… điểm): số lớn dần, thời gian ngắn dần, đạt mức khó nhất của hạng ở level 20.
 - Chọn sai hoặc hết giờ là **game over**. Màn kết quả hiện điểm, level, thời gian sống và số câu đúng. Có pháo giấy nếu lập kỷ lục mới.
-- Có **6 hạng**. Hạng càng thấp càng dễ. Đạt đủ level và điểm trong một ván thì thăng hạng.
+- Có **7 hạng**. Hạng càng thấp càng dễ. Đạt đủ level và điểm trong một ván thì thăng hạng.
+- Mỗi ván dùng **1 lượt chơi** (tối đa 3, hồi 1 lượt mỗi 30 phút; xem quảng cáo để nhận thêm – hiện là bản giả lập).
 
 | Hạng | Cộng/trừ trong phạm vi | Thừa số nhân/chia | Tỉ lệ + − × ÷ | Thời gian/câu | Thăng hạng khi |
 |------|-----------------------:|------------------:|---------------|--------------:|----------------|
+| 🐣 Tân Binh | 10 → 50 | không có | 50·50·0·0 | 40 → 20 s | Lv 8 + 500 điểm |
 | 🥉 Đồng | 10 → 100 | 2–5 → 2–9 (× từ lv4, ÷ từ lv6) | 40·40·12·8 | 30 → 15 s | Lv 10 + 700 điểm |
 | 🥈 Bạc | 20 → 200 | 2–9 → 2–10 | 35·35·18·12 | 20 → 10 s | Lv 12 + 1000 điểm |
 | 🥇 Vàng | 50 → 500 | 2–10 → 2–12 | 30·30·22·18 | 15 → 8 s | Lv 14 + 1300 điểm |

@@ -14,7 +14,7 @@ import '../services/sound_service.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
-import 'game_screen.dart';
+import '../widgets/lives.dart';
 import 'leaderboard_screen.dart';
 
 class ResultScreen extends StatefulWidget {
@@ -112,7 +112,7 @@ class _ResultScreenState extends State<ResultScreen> {
                   child: ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     title: Text(s, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    trailing: const Icon(Icons.send_rounded, color: AppColors.facebook),
+                    trailing: const Icon(Icons.send_rounded, color: AppColors.pink),
                     onTap: () => Navigator.pop(c, s),
                   ),
                 ),
@@ -126,8 +126,8 @@ class _ResultScreenState extends State<ResultScreen> {
     setState(() => _sharing = true);
     final copiedMsg = context.tr('statusCopied');
     try {
-      // Facebook không cho app điền sẵn nội dung bài đăng, nên ta sao chép
-      // lời khoe vào clipboard để người chơi dán vào.
+      // Nhiều app (Facebook, Zalo…) không nhận chữ điền sẵn khi chia sẻ ảnh,
+      // nên ta sao chép lời khoe vào clipboard để người chơi dán vào.
       await Clipboard.setData(ClipboardData(text: chosen));
       final boundary =
           _cardKey.currentContext!.findRenderObject()! as RenderRepaintBoundary;
@@ -192,7 +192,7 @@ class _ResultScreenState extends State<ResultScreen> {
                   height: 62,
                   width: double.infinity,
                   child: BubblyButton(
-                    color: AppColors.facebook,
+                    color: AppColors.pink,
                     onPressed: _sharing ? null : _share,
                     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                       if (_sharing)
@@ -201,9 +201,9 @@ class _ResultScreenState extends State<ResultScreen> {
                             height: 22,
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
                       else
-                        const Icon(Icons.facebook),
+                        const Text('🎉'),
                       const SizedBox(width: 10),
-                      Text(context.tr('shareFb')),
+                      Text(context.tr('shareResult')),
                     ]),
                   ),
                 ),
@@ -214,8 +214,7 @@ class _ResultScreenState extends State<ResultScreen> {
                       height: 62,
                       child: BubblyButton(
                         color: AppColors.orange,
-                        onPressed: () => Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(builder: (_) => const GameScreen())),
+                        onPressed: () => startGame(context, replace: true),
                         child: FittedBox(child: Text('🔁 ${context.tr('playAgain')}')),
                       ),
                     ),

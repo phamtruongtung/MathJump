@@ -5,11 +5,13 @@ import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../models/social.dart';
 import '../widgets/common.dart';
+import '../widgets/lives.dart';
 import 'friends_screen.dart';
-import 'game_screen.dart';
 import 'leaderboard_screen.dart';
 import 'settings_screen.dart';
+import 'tutorial_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -22,6 +24,14 @@ class HomeScreen extends StatelessWidget {
     final s = context.watch<AppState>();
     final p = s.profile!;
     final best = s.best;
+
+    // Người mới: tự mở hướng dẫn thực hành một lần.
+    if (s.shouldShowTutorial) {
+      s.markTutorialSeen();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) _go(context, const TutorialScreen());
+      });
+    }
 
     return Scaffold(
       body: SkyBackground(
@@ -41,6 +51,11 @@ class HomeScreen extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                      ),
+                      IconButton(
+                        tooltip: context.tr('howToPlay'),
+                        icon: const Icon(Icons.help_rounded, color: AppColors.purple, size: 30),
+                        onPressed: () => _go(context, const TutorialScreen()),
                       ),
                       const OnlineBadge(),
                     ]),
@@ -98,9 +113,15 @@ class HomeScreen extends StatelessWidget {
                             ]),
                     ),
                     const Spacer(),
+                    if (s.overtakeAlerts.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _OvertakeBanner(alerts: s.overtakeAlerts),
+                    ],
                     const SizedBox(height: 16),
                     const _RankCard(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
+                    const LivesBar(showAdButton: true),
+                    const SizedBox(height: 10),
                     SizedBox(
                       height: 84,
                       width: double.infinity,
@@ -108,14 +129,18 @@ class HomeScreen extends StatelessWidget {
                         color: AppColors.green,
                         radius: 30,
                         fontSize: 38,
-                        onPressed: () => _go(context, const GameScreen()),
+                        onPressed: () => startGame(context),
                         child: Text('▶  ${context.tr('play')}'),
                       ),
                     ),
                     const SizedBox(height: 16),
                     Row(children: [
                       _menu(context, '🏆', context.tr('leaderboard'), AppColors.orange,
-                          () => _go(context, const LeaderboardScreen())),
+                          () {
+                            s.dismissOvertakeAlerts();
+                            _go(context, const LeaderboardScreen());
+                          },
+                          badge: s.overtakeAlerts.length),
                       const SizedBox(width: 12),
                       _menu(context, '👫', context.tr('friends'), AppColors.pink,
                           () => _go(context, const FriendsScreen()),
@@ -154,6 +179,62 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "🔥 Minh vừa vượt kỷ lục của bạn…" + nút Phục thù.
+class _OvertakeBanner extends StatelessWidget {
+  const _OvertakeBanner({required this.alerts});
+  final List<FriendEntry> alerts;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = Provider.of<AppState>(context, listen: false);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE3E3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.red, width: 2),
+      ),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (final f in alerts.take(3))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(
+                  context.tr('overtakenBy', {
+                    'name': f.name,
+                    'rank': '${rankAt(f.bestRank).emoji} ${context.tr(rankAt(f.bestRank).key)}',
+                    'score': f.bestScore,
+                  }),
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                ),
+              ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 42,
+              child: BubblyButton(
+                color: AppColors.red,
+                fontSize: 16,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                onPressed: () {
+                  s.dismissOvertakeAlerts();
+                  startGame(context);
+                },
+                child: Text('⚔️ ${context.tr('revenge')}'),
+              ),
+            ),
+          ]),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: s.dismissOvertakeAlerts,
+        ),
+      ]),
     );
   }
 }

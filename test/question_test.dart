@@ -51,27 +51,35 @@ void main() {
   test('higher rank means bigger numbers; low ranks are mostly + and −', () {
     for (var r = 1; r < kRanks.length; r++) {
       for (final l in [1, 10, 20]) {
-        expect(LevelConfig(l, rank: r).addMax, greaterThan(LevelConfig(l, rank: r - 1).addMax));
+        final cur = LevelConfig(l, rank: r).addMax;
+        final prev = LevelConfig(l, rank: r - 1).addMax;
+        expect(cur, l == 1 ? greaterThanOrEqualTo(prev) : greaterThan(prev));
         expect(LevelConfig(l, rank: r).factorMax,
             greaterThanOrEqualTo(LevelConfig(l, rank: r - 1).factorMax));
       }
     }
-    for (final r in [0, 1]) {
+    for (final r in [0, 1, 2]) {
       final w = LevelConfig(20, rank: r).weights;
       expect(w[0] + w[1], greaterThan(w[2] + w[3]));
     }
-    // Hạng Đồng: level 1 chỉ có cộng; nhân từ level 4, chia từ level 6.
+    // Tân Binh: chỉ cộng trừ, phạm vi tối đa 50.
     expect(const LevelConfig(1).ops, [Op.add]);
     expect(const LevelConfig(3).ops, [Op.add, Op.sub]);
-    expect(const LevelConfig(4).ops, [Op.add, Op.sub, Op.mul]);
-    expect(const LevelConfig(6).ops, Op.values);
-    expect(const LevelConfig(1, rank: 1).ops, [Op.add, Op.sub]);
-    expect(const LevelConfig(1, rank: 2).ops, Op.values);
+    expect(const LevelConfig(30).ops, [Op.add, Op.sub]);
+    expect(const LevelConfig(30).addMax, 50);
+    // Đồng: level 1 chỉ có cộng; nhân từ level 4, chia từ level 6.
+    expect(const LevelConfig(1, rank: 1).ops, [Op.add]);
+    expect(const LevelConfig(3, rank: 1).ops, [Op.add, Op.sub]);
+    expect(const LevelConfig(4, rank: 1).ops, [Op.add, Op.sub, Op.mul]);
+    expect(const LevelConfig(6, rank: 1).ops, Op.values);
+    expect(const LevelConfig(1, rank: 2).ops, [Op.add, Op.sub]);
+    expect(const LevelConfig(1, rank: 3).ops, Op.values);
   });
 
   test('ranks: lower rank gives more time, promotion is reachable', () {
-    expect(const LevelConfig(1, rank: 0).timeLimit, 30);
-    expect(const LevelConfig(1, rank: 1).timeLimit, 20);
+    expect(const LevelConfig(1, rank: 0).timeLimit, 40);
+    expect(const LevelConfig(1, rank: 1).timeLimit, 30);
+    expect(const LevelConfig(1, rank: 2).timeLimit, 20);
     for (var r = 0; r < kRanks.length; r++) {
       for (var l = 1; l < 40; l++) {
         final t = LevelConfig(l, rank: r).timeLimit;
