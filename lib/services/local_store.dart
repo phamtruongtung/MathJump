@@ -34,6 +34,10 @@ class LocalStore {
   String? get guestName => _p.getString('guestName');
   Future<void> setGuestName(String v) => _p.setString('guestName', v);
 
+  /// Tài khoản đăng nhập gần nhất trên máy (để mang dữ liệu sang khi đổi tài khoản).
+  String? get lastAccountId => _p.getString('lastAccountId');
+  Future<void> setLastAccountId(String v) => _p.setString('lastAccountId', v);
+
   // ---- Dữ liệu theo profile ----
   bool hasData(String pid) => _p.containsKey('history_$pid');
 

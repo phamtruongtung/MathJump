@@ -91,19 +91,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 20),
-        SizedBox(
-          height: 60,
-          child: BubblyButton(
-            color: AppColors.facebook,
-            fontSize: 18,
-            onPressed: () => loginWithFacebook(context),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(Icons.facebook),
-              const SizedBox(width: 8),
-              Flexible(child: FittedBox(child: Text(context.tr('loginFacebook')))),
-            ]),
-          ),
-        ),
+        const GoogleLoginButton(height: 60, fontSize: 18),
       ]);
 
   Widget _body(AppState s) {

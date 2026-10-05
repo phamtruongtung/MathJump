@@ -125,23 +125,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         contentPadding: EdgeInsets.zero,
                         leading: PlayerAvatar(name: p.name, photoUrl: p.photoUrl),
                         title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w800)),
-                        subtitle: Text(context.tr(p.isGuest ? 'guestAccount' : 'fbAccount')),
+                        subtitle: Text(context.tr(p.isGuest ? 'guestAccount' : 'googleAccount')),
                       ),
                     if (p != null && p.isGuest)
-                      SizedBox(
-                        height: 54,
-                        width: double.infinity,
-                        child: BubblyButton(
-                          color: AppColors.facebook,
-                          fontSize: 17,
-                          onPressed: () => loginWithFacebook(context),
-                          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            const Icon(Icons.facebook),
-                            const SizedBox(width: 8),
-                            Flexible(child: FittedBox(child: Text(context.tr('loginFacebook')))),
-                          ]),
-                        ),
-                      ),
+                      const GoogleLoginButton(height: 54, fontSize: 17),
                     if (s.canUseCloud)
                       ListTile(
                         contentPadding: EdgeInsets.zero,

@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Math Jump</string>
-    <!-- App ID và Client Token của app Math Jump trên developers.facebook.com -->
-    <string name="facebook_app_id">1408177524838425</string>
-    <string name="fb_login_protocol_scheme">fb1408177524838425</string>
-    <string name="facebook_client_token">7a05b67176bada7dcaace120aa09527f</string>
 </resources>

@@ -26,7 +26,7 @@ Có thể chỉnh các thông số này trong `kRanks` ([lib/game/rank.dart](lib
 
 - Giao diện màu tươi sáng, nút bấm to, 10 nhân vật để chọn (🐸 🐰 🐱 🐶 🐼 🦊 🐵 🐧 🦄 🐯).
 - Có tiếng Việt và tiếng Anh, đổi được ngay trong Cài đặt hoặc ở màn hình đăng nhập.
-- **Đăng nhập Facebook** (qua Firebase Auth). Ngoài ra còn có **chế độ khách** để chơi ngay. Khi đăng nhập lần đầu, thành tích chơi ở chế độ khách được chuyển sang tài khoản.
+- **Đăng nhập Google** (qua Firebase Auth). Ngoài ra còn có **chế độ khách** để chơi ngay. Khi đăng nhập lần đầu, thành tích chơi ở chế độ khách được chuyển sang tài khoản.
 - **Chơi offline hoàn toàn**: lịch sử, kỷ lục và bảng xếp hạng bạn bè (bản lưu gần nhất) đều nằm trên máy. Khi có mạng trở lại, app tự đẩy kỷ lục lên và tải điểm mới của bạn bè về.
 - **Kết bạn bằng mã 6 ký tự**: gửi lời mời, bạn kia đồng ý hoặc từ chối, hủy kết bạn. Bảng xếp hạng gồm bạn bè và chính mình. Màn kết quả báo khi bạn vừa vượt qua ai đó.
 - **Khoe lên Facebook**: chọn 1 trong vài lời khoe gợi ý, app chụp bảng kết quả thành ảnh rồi mở bảng chia sẻ (chọn Facebook).
@@ -40,17 +40,16 @@ Có thể chỉnh các thông số này trong `kRanks` ([lib/game/rank.dart](lib
 2. Cài [Android Studio](https://developer.android.com/studio), sau đó chạy `flutter doctor --android-licenses`.
 3. Chạy `flutter doctor` và xử lý hết các dấu ✗ ở phần Android.
 
-### 2. Tạo project & chạy thử (chưa cần Facebook)
+### 2. Tạo project & chạy thử (chưa cần Firebase)
 ```bash
 powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 ```bash
 flutter run
 ```
-Script tạo các file Android còn thiếu, đặt `minSdk = 23`, tải thư viện và chạy test. Lúc này đã chơi được ở **chế độ khách**. Nút Facebook sẽ báo "chưa cấu hình".
+Script tạo các file Android còn thiếu, đặt `minSdk = 23`, tải thư viện và chạy test. Lúc này đã chơi được ở **chế độ khách**. Nút Google sẽ báo "chưa cấu hình".
 
-### 3. Bật Đăng nhập Facebook + Bạn bè (Firebase)
-**a. Firebase**
+### 3. Bật Đăng nhập Google + Bạn bè (Firebase)
 1. Tạo project tại <https://console.firebase.google.com>.
 2. Cài FlutterFire CLI rồi cấu hình cho Android:
    ```bash
@@ -61,23 +60,15 @@ Script tạo các file Android còn thiếu, đặt `minSdk = 23`, tải thư vi
    ```
    Lệnh này tạo `android/app/google-services.json` và thêm plugin Google Services vào Gradle.
 3. **Firestore Database**: tạo database, rồi dán nội dung [firestore.rules](firestore.rules) vào tab *Rules* và bấm *Publish*.
-4. **Authentication → Sign-in method → Facebook**: bật lên, nhập App ID / App Secret (lấy ở bước b), rồi chép *OAuth redirect URI* để dùng ở bước b.
-
-**b. Facebook**
-1. Tạo app tại <https://developers.facebook.com> (loại *Consumer*) và thêm sản phẩm **Facebook Login**.
-2. Phần Android: Package name `com.mathjump.math_jump`, Class name `com.mathjump.math_jump.MainActivity`.
-3. Key hash của máy debug (mật khẩu `android`, cần có OpenSSL):
-   ```bash
-   keytool -exportcert -alias androiddebugkey -keystore "%USERPROFILE%\.android\debug.keystore" | openssl sha1 -binary | openssl base64
-   ```
-4. Ở *Facebook Login → Settings*, dán OAuth redirect URI của Firebase vào *Valid OAuth Redirect URIs*.
-5. Điền **App ID** và **Client Token** (Settings → Advanced) vào [android/app/src/main/res/values/strings.xml](android/app/src/main/res/values/strings.xml).
+4. **Authentication → Sign-in method → Google**: bật lên và chọn email hỗ trợ.
+5. **Project settings → app Android**: thêm SHA-1 và SHA-256 của khóa ký app (`keytool -list -v -keystore <file .keystore>`), rồi tải lại `google-services.json`.
+6. Bản web: thêm tên miền trang web vào **Authentication → Settings → Authorized domains**, điền cấu hình web app vào [lib/firebase_web_options.dart](lib/firebase_web_options.dart).
 
 ### 4. Build file cài đặt
 ```bash
 flutter build apk --release
 ```
-File APK nằm ở `build/app/outputs/flutter-apk/app-release.apk`. Muốn đưa lên Google Play thì cần ký bằng keystore riêng và thêm key hash release vào Facebook.
+File APK nằm ở `build/app/outputs/flutter-apk/app-release.apk`. Muốn đưa lên Google Play thì thêm SHA-1 của khóa ký do Google Play cấp vào Firebase.
 
 ## Cấu trúc mã nguồn
 
@@ -87,7 +78,7 @@ lib/
   game/question.dart           Sinh phép tính (đảm bảo chỉ 1 đáp án đúng), độ khó theo level
   state/app_state.dart         Trạng thái app, lưu kết quả, đồng bộ khi có mạng
   services/local_store.dart    Lưu dữ liệu trên máy (SharedPreferences)
-  services/cloud_service.dart  Facebook login, Firestore: hồ sơ, kỷ lục, kết bạn
+  services/cloud_service.dart  Google login, Firestore: hồ sơ, kỷ lục, kết bạn
   screens/                     login, home, game, result, leaderboard, friends, settings
   widgets/climber_view.dart    Cầu thang + nhân vật nhảy
   l10n/strings.dart            Bản dịch Việt / Anh

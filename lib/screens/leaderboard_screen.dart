@@ -82,13 +82,7 @@ class _FriendsBoard extends StatelessWidget {
           if (!s.canUseCloud) ...[
             _Notice(text: context.tr('needLogin')),
             const SizedBox(height: 8),
-            Center(
-              child: TextButton.icon(
-                onPressed: () => loginWithFacebook(context),
-                icon: const Icon(Icons.facebook, color: AppColors.facebook),
-                label: Text(context.tr('loginFacebook')),
-              ),
-            ),
+            const GoogleLoginButton(height: 56, fontSize: 17),
           ] else ...[
             Row(children: [
               const OnlineBadge(),

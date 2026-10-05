@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import '../firebase_web_options.dart';
 import '../models/game_result.dart';
@@ -17,7 +17,7 @@ class AuthCancelled implements Exception {
 
 enum FriendOp { sent, accepted, notFound, self, already, offline, error }
 
-/// Firebase: đăng nhập Facebook, hồ sơ công khai, kết bạn và điểm của bạn bè.
+/// Firebase: đăng nhập Google, hồ sơ công khai, kết bạn và điểm của bạn bè.
 ///
 /// Firestore:
 ///   users/{uid}                          name, photoUrl, friendCode, bestScore, bestLevel, ...
@@ -57,12 +57,13 @@ class CloudService {
 
   // ---------------- Auth ----------------
 
-  Future<User> signInWithFacebook() async {
+  bool _googleReady = false;
+
+  Future<User> signInWithGoogle() async {
     if (kIsWeb) {
-      // Trình duyệt: Firebase mở cửa sổ đăng nhập Facebook.
+      // Trình duyệt: Firebase mở cửa sổ đăng nhập Google.
       try {
-        final uc = await FirebaseAuth.instance
-            .signInWithPopup(FacebookAuthProvider()..addScope('public_profile'));
+        final uc = await FirebaseAuth.instance.signInWithPopup(GoogleAuthProvider());
         return uc.user!;
       } on FirebaseAuthException catch (e) {
         if (e.code == 'popup-closed-by-user' || e.code == 'cancelled-popup-request') {
@@ -71,21 +72,34 @@ class CloudService {
         rethrow;
       }
     }
-    final res = await FacebookAuth.instance.login(permissions: ['public_profile']);
-    if (res.status == LoginStatus.cancelled) throw const AuthCancelled();
-    final token = res.accessToken;
-    if (res.status != LoginStatus.success || token == null) {
-      throw Exception(res.message ?? res.status.name);
+    // Android: chọn tài khoản Google trên máy, rồi đổi sang tài khoản Firebase.
+    // Mã client lấy tự động từ google-services.json.
+    final google = GoogleSignIn.instance;
+    if (!_googleReady) {
+      await google.initialize();
+      _googleReady = true;
     }
-    final cred = FacebookAuthProvider.credential(token.tokenString);
-    final uc = await FirebaseAuth.instance.signInWithCredential(cred);
+    final GoogleSignInAccount account;
+    try {
+      account = await google.authenticate();
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        throw const AuthCancelled();
+      }
+      throw Exception(e.toString());
+    }
+    final idToken = account.authentication.idToken;
+    if (idToken == null) throw Exception('Google did not return an ID token');
+    final uc = await FirebaseAuth.instance
+        .signInWithCredential(GoogleAuthProvider.credential(idToken: idToken));
     return uc.user!;
   }
 
   Future<void> signOut() async {
-    if (!kIsWeb) {
+    if (!kIsWeb && _googleReady) {
       try {
-        await FacebookAuth.instance.logOut();
+        await GoogleSignIn.instance.signOut();
       } catch (_) {}
     }
     if (_ready) await FirebaseAuth.instance.signOut();

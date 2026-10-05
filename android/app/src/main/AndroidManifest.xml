@@ -28,14 +28,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Facebook Login: giá trị nằm trong res/values/strings.xml -->
-        <meta-data
-            android:name="com.facebook.sdk.ApplicationId"
-            android:value="@string/facebook_app_id" />
-        <meta-data
-            android:name="com.facebook.sdk.ClientToken"
-            android:value="@string/facebook_client_token" />
-
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
@@ -46,8 +38,5 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- Cho phép mở app Facebook để đăng nhập / chia sẻ -->
-        <provider android:authorities="com.facebook.katana.provider.PlatformProvider" />
-        <package android:name="com.facebook.katana" />
     </queries>
 </manifest>

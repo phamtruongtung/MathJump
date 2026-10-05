@@ -52,6 +52,7 @@ class AppState extends ChangeNotifier {
 
     final user = cloud.currentUser;
     if (user != null) {
+      await store.setLastAccountId(user.uid);
       profile = Profile(
         id: user.uid,
         name: user.displayName ?? 'Player',
@@ -176,20 +177,28 @@ class AppState extends ChangeNotifier {
 
   /// null = thành công, '' = người dùng hủy, 'firebaseMissing' = chưa cấu hình,
   /// còn lại là thông báo lỗi.
-  Future<String?> signInWithFacebook() async {
+  Future<String?> signInWithGoogle() async {
     if (!cloud.ready) return 'firebaseMissing';
     try {
-      final u = await cloud.signInWithFacebook();
+      final u = await cloud.signInWithGoogle();
       final np = Profile(
         id: u.uid,
         name: u.displayName ?? 'Player',
         photoUrl: u.photoURL,
         isGuest: false,
       );
-      // Lần đầu đăng nhập trên máy này: mang theo thành tích chơi chế độ khách.
-      if (!store.hasData(np.id) && store.hasData(Profile.guestId)) {
-        await store.copyProfileData(Profile.guestId, np.id);
+      // Lần đầu đăng nhập tài khoản này trên máy: mang theo thành tích đang có
+      // (của tài khoản vừa dùng, tài khoản Facebook cũ, hoặc chế độ khách).
+      if (!store.hasData(np.id)) {
+        final candidates = [profile?.id, store.lastAccountId, Profile.guestId];
+        for (final src in candidates) {
+          if (src != null && src != np.id && store.hasData(src)) {
+            await store.copyProfileData(src, np.id);
+            break;
+          }
+        }
       }
+      await store.setLastAccountId(np.id);
       profile = np;
       _loadProfileData();
       notifyListeners();
