@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
@@ -47,6 +48,31 @@ class CloudService {
       _ready = true;
     } catch (e) {
       debugPrint('[Cloud] Firebase chưa được cấu hình, chạy offline: $e');
+      return;
+    }
+    await _activateAppCheck();
+  }
+
+  /// App Check: chứng minh với Firebase rằng yêu cầu đến từ app Math Jump thật
+  /// (Android: Play Integrity, web: reCAPTCHA v3). Khi chưa bật "bắt buộc"
+  /// trong Firebase Console thì chỉ theo dõi, không chặn ai; lỗi ở đây cũng
+  /// không làm game ngừng chạy.
+  Future<void> _activateAppCheck() async {
+    try {
+      if (kIsWeb) {
+        if (recaptchaSiteKey == 'REPLACE') return;
+        await FirebaseAppCheck.instance.activate(
+          // ignore: deprecated_member_use
+          webProvider: ReCaptchaV3Provider(recaptchaSiteKey),
+        );
+      } else {
+        await FirebaseAppCheck.instance.activate(
+          // ignore: deprecated_member_use
+          androidProvider: AndroidProvider.playIntegrity,
+        );
+      }
+    } catch (e) {
+      debugPrint('[Cloud] App Check: $e');
     }
   }
 
