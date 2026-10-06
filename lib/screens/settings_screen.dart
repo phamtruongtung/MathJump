@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets/common.dart';
 import 'login_screen.dart';
 import 'tutorial_screen.dart';
+import '../version.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -183,6 +184,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                   ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, bottom: 8),
+                  child: Text(
+                    'Math Jump • ${context.tr('version', {'v': kAppVersion})}',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: AppColors.ink.withValues(alpha: 0.6), fontWeight: FontWeight.w700),
+                  ),
                 ),
               ]),
             ),

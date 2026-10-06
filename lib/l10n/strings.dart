@@ -129,6 +129,7 @@ const _vi = <String, String>{
   'close': 'Đóng',
   'overtakenBy': '🔥 {name} vừa vượt kỷ lục của bạn: {rank} – {score} điểm!',
   'revenge': 'Phục thù!',
+  'version': 'Phiên bản {v}',
   'deleteAccount': 'Xóa tài khoản',
   'deleteTitle': 'Xóa tài khoản vĩnh viễn?',
   'deleteBody':
@@ -279,6 +280,7 @@ const _en = <String, String>{
   'close': 'Close',
   'overtakenBy': '🔥 {name} just beat your record: {rank} – {score} points!',
   'revenge': 'Take it back!',
+  'version': 'Version {v}',
   'deleteAccount': 'Delete account',
   'deleteTitle': 'Delete your account forever?',
   'deleteBody':

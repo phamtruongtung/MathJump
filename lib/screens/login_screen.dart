@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
+import '../version.dart';
 import '../widgets/common.dart';
 
 /// Gọi đăng nhập Google và hiển thị lỗi (nếu có). Dùng chung cho nhiều màn hình.
@@ -129,6 +130,9 @@ class LoginScreen extends StatelessWidget {
               Text(context.tr('guestNote'),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.ink.withValues(alpha: 0.7))),
+              const SizedBox(height: 6),
+              Text(context.tr('version', {'v': kAppVersion}),
+                  style: TextStyle(color: AppColors.ink.withValues(alpha: 0.5), fontSize: 12)),
             ]),
           ),
         ),

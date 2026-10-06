@@ -1,7 +1,9 @@
 name: math_jump
 description: "Math Jump - game luyện cộng trừ nhân chia cho trẻ em."
 publish_to: 'none'
-version: 1.0.0+1
+# Đổi phiên bản: sửa dòng này VÀ kAppVersion trong lib/version.dart (test kiểm tra
+# hai chỗ khớp nhau). Số sau dấu + (mã bản dựng) phải tăng mỗi lần đưa lên Google Play.
+version: 0.0.12+12
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
