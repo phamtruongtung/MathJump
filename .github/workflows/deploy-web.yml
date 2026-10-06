@@ -14,6 +14,9 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  CF_PROJECT: ${{ vars.CF_PROJECT || 'mathjump-game' }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,24 +34,54 @@ jobs:
       - run: flutter pub get
 
       - name: Build
-        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/play/"
+        run: flutter build web --release --no-web-resources-cdn --base-href "/play/"
 
-      - name: Assemble site
+      - name: Assemble Cloudflare site
         run: |
           mkdir -p _site/play
           cp -r docs/. _site/
           cp -r build/web/. _site/play/
 
+      - name: Create Cloudflare Pages project (first run only)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@3 pages project create "$CF_PROJECT" --production-branch=main || echo "Project already exists"
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@3 pages deploy _site --project-name="$CF_PROJECT" --branch=main --commit-dirty=true
+
+      - name: Assemble GitHub Pages site
+        env:
+          GAME_URL: ${{ vars.WEB_GAME_URL }}
+        run: |
+          URL="${GAME_URL:-https://$CF_PROJECT.pages.dev/play/}"
+          mkdir -p _gh/play
+          cp -r docs/. _gh/
+          cat > _gh/play/index.html <<EOF
+          <!doctype html>
+          <html lang="vi"><head><meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=$URL">
+          <link rel="canonical" href="$URL"><title>Math Jump</title></head>
+          <body><p>Math Jump đã chuyển sang địa chỉ mới / Math Jump has moved:
+          <a href="$URL">$URL</a></p>
+          <script>location.replace("$URL")</script></body></html>
+          EOF
+          echo "Game URL: $URL"
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: _gh
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}play/
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
