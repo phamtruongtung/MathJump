@@ -15,8 +15,8 @@ const webFirebaseOptions = FirebaseOptions(
 
 bool get webFirebaseConfigured => webFirebaseOptions.apiKey != 'REPLACE';
 
-/// Khóa trang web (site key) reCAPTCHA v3 cho App Check trên bản web
-/// (google.com/recaptcha/admin, tên miền phamtruongtung.github.io). Khóa này
-/// công khai; khóa bí mật (secret key) chỉ dán vào Firebase Console.
+/// Mã khóa Fraud Defense (reCAPTCHA Enterprise) cho App Check trên bản web,
+/// tạo trong Google Cloud Console cho tên miền phamtruongtung.github.io.
+/// (reCAPTCHA v3 loại thường không còn được App Check hỗ trợ.)
 /// Còn để REPLACE thì bản web chưa bật App Check.
-const recaptchaSiteKey = '6LcBkOEtAAAAAIOaE18SPC_hT6v4dj8Ztqe3CpA2';
+const recaptchaSiteKey = 'REPLACE';

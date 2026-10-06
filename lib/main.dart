@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -13,16 +15,79 @@ import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
-  final store = LocalStore();
-  await store.init();
-  final cloud = CloudService();
-  await cloud.init(); // không có cấu hình Firebase vẫn chạy được (offline/khách)
-  final state = AppState(store, cloud, SoundService());
-  await state.init();
+  // Lỗi khi vẽ giao diện: hiện nội dung lỗi thay vì màn hình trắng/xám.
+  ErrorWidget.builder = (details) => _ErrorBox(details.exceptionAsString());
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('[Error] ${details.exceptionAsString()}\n${details.stack}');
+  };
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('[Error] $error\n$stack');
+    return true; // lỗi bất đồng bộ: ghi lại, không làm sập game
+  };
 
-  runApp(ChangeNotifierProvider.value(value: state, child: const MathJumpApp()));
+  try {
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    final store = LocalStore();
+    await store.init();
+    final cloud = CloudService();
+    // Không có cấu hình Firebase vẫn chạy được (offline/khách).
+    await cloud.init().timeout(const Duration(seconds: 20));
+    final state = AppState(store, cloud, SoundService());
+    await state.init().timeout(const Duration(seconds: 20));
+    runApp(ChangeNotifierProvider.value(value: state, child: const MathJumpApp()));
+  } catch (e, s) {
+    // Khởi động thất bại: hiện lỗi để người chơi chụp màn hình báo lại.
+    debugPrint('[Startup] $e\n$s');
+    runApp(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(backgroundColor: AppColors.cream, body: _ErrorBox('$e')),
+    ));
+  }
+}
+
+/// Hộp báo lỗi thân thiện (thay cho màn hình trắng khi có lỗi).
+class _ErrorBox extends StatelessWidget {
+  const _ErrorBox(this.message);
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.cream,
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Text('😵', style: TextStyle(fontSize: 64)),
+              const Text('Ôi, game gặp lỗi / Something went wrong',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.ink)),
+              const SizedBox(height: 8),
+              const Text(
+                  'Hãy chụp màn hình này gửi cho nhà phát triển, rồi tải lại trang hoặc mở lại game.\n'
+                  'Please take a screenshot, then reload the page or reopen the game.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.ink)),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.red),
+                ),
+                child: SelectableText(message,
+                    style: const TextStyle(fontSize: 13, color: AppColors.red)),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MathJumpApp extends StatelessWidget {

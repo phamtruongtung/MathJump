@@ -49,14 +49,10 @@
       var l = document.getElementById('loader');
       if (l) l.remove();
     }
+    // Chỉ ẩn màn hình chờ khi game đã vẽ xong khung hình đầu tiên. (Khung vẽ
+    // của Flutter có thể xuất hiện trước khi game khởi động xong — ẩn sớm sẽ
+    // để lại màn hình trắng nếu khởi động bị treo.)
     window.addEventListener('flutter-first-frame', hideLoader);
-    // Dự phòng: khi Flutter đã gắn khung vẽ vào trang thì ẩn màn hình chờ.
-    new MutationObserver(function (_, obs) {
-      if (document.querySelector('flutter-view, flt-glass-pane')) {
-        obs.disconnect();
-        setTimeout(hideLoader, 1500);
-      }
-    }).observe(document.body, { childList: true });
     setTimeout(function () {
       var h = document.getElementById('help');
       if (h && document.getElementById('loader')) h.style.display = 'block';

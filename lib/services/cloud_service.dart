@@ -54,7 +54,7 @@ class CloudService {
   }
 
   /// App Check: chứng minh với Firebase rằng yêu cầu đến từ app Math Jump thật
-  /// (Android: Play Integrity, web: reCAPTCHA v3). Khi chưa bật "bắt buộc"
+  /// (Android: Play Integrity, web: Fraud Defense). Khi chưa bật "bắt buộc"
   /// trong Firebase Console thì chỉ theo dõi, không chặn ai; lỗi ở đây cũng
   /// không làm game ngừng chạy.
   Future<void> _activateAppCheck() async {
@@ -63,7 +63,7 @@ class CloudService {
         if (recaptchaSiteKey == 'REPLACE') return;
         await FirebaseAppCheck.instance.activate(
           // ignore: deprecated_member_use
-          webProvider: ReCaptchaV3Provider(recaptchaSiteKey),
+          webProvider: ReCaptchaEnterpriseProvider(recaptchaSiteKey),
         );
       } else {
         await FirebaseAppCheck.instance.activate(

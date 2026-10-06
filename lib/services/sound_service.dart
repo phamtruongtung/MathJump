@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -21,25 +23,32 @@ class SoundService with WidgetsBindingObserver {
   // Trộn tiếng với nhau: tiếng hiệu ứng không làm dừng nhạc nền.
   static final _ctx = AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers).build();
 
+  /// Không chờ âm thanh nạp xong: trình duyệt khóa âm thanh cho tới lần chạm
+  /// đầu tiên, nếu chờ thì game kẹt ở màn hình trắng. Âm thanh được chuẩn bị
+  /// ngầm; trên web chỉ phát sau khi người chơi chạm vào màn hình.
   Future<void> init({required bool musicOn, required bool sfxOn}) async {
     _musicOn = musicOn;
     _sfxOn = sfxOn;
     WidgetsBinding.instance.addObserver(this);
+    for (final s in Sfx.values) {
+      // Hai player mỗi hiệu ứng để các lần bấm nhanh liên tiếp không cắt tiếng nhau.
+      _sfx[s] = [AudioPlayer(), AudioPlayer()];
+      _next[s] = 0;
+    }
+    unawaited(_prepare());
+  }
+
+  Future<void> _prepare() async {
+    if (kIsWeb) return; // web: nạp file khi phát lần đầu (sau khi người chơi chạm)
     try {
-      if (!kIsWeb) await _music.setAudioContext(_ctx);
+      await _music.setAudioContext(_ctx);
       await _music.setReleaseMode(ReleaseMode.loop);
       for (final s in Sfx.values) {
-        // Hai player mỗi hiệu ứng để các lần bấm nhanh liên tiếp không cắt tiếng nhau.
-        final players = <AudioPlayer>[];
-        for (var i = 0; i < 2; i++) {
-          final p = AudioPlayer();
-          if (!kIsWeb) await p.setAudioContext(_ctx);
+        for (final p in _sfx[s]!) {
+          await p.setAudioContext(_ctx);
           await p.setReleaseMode(ReleaseMode.stop);
           await p.setSource(AssetSource('audio/${s.name}.wav'));
-          players.add(p);
         }
-        _sfx[s] = players;
-        _next[s] = 0;
       }
       if (_musicOn) await _startMusic();
     } catch (e) {
@@ -53,10 +62,12 @@ class SoundService with WidgetsBindingObserver {
     if (_starting) return;
     _starting = true;
     try {
+      const wait = Duration(seconds: 5); // trình duyệt có thể treo lệnh phát
       if (_musicStarted) {
-        await _music.resume();
+        await _music.resume().timeout(wait);
       } else {
-        await _music.play(AssetSource('audio/music.wav'), volume: 0.35);
+        if (kIsWeb) await _music.setReleaseMode(ReleaseMode.loop).timeout(wait);
+        await _music.play(AssetSource('audio/music.wav'), volume: 0.35).timeout(wait);
         _musicStarted = true;
       }
     } catch (e) {
@@ -90,13 +101,17 @@ class SoundService with WidgetsBindingObserver {
     final i = _next[s]!;
     _next[s] = (i + 1) % players.length;
     final p = players[i];
-    p.stop().then((_) => p.resume()).catchError((Object e) => debugPrint('[Sound] $e'));
+    final Future<void> f = kIsWeb
+        ? p.play(AssetSource('audio/${s.name}.wav'))
+        : p.stop().then((_) => p.resume());
+    f.catchError((Object e) => debugPrint('[Sound] $e'));
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      if (_musicOn) _startMusic();
+      // Web: chỉ phát lại nếu nhạc đã chạy (lần đầu phải đợi người chơi chạm).
+      if (_musicOn && (!kIsWeb || _musicStarted)) _startMusic();
     } else if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
       _music.pause();
     }
