@@ -328,6 +328,38 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Xóa vĩnh viễn tài khoản: dữ liệu trên máy chủ, tài khoản đăng nhập và dữ
+  /// liệu của tài khoản đó trên máy. Trả về null nếu thành công, '' nếu người
+  /// dùng hủy, 'offline' / 'mismatch' hoặc thông báo lỗi.
+  Future<String?> deleteAccount() async {
+    final p = profile;
+    if (!canUseCloud || p == null) return 'error';
+    if (!online) return 'offline';
+    try {
+      await cloud.reauthenticate();
+    } on AuthCancelled {
+      return '';
+    } on AccountMismatch {
+      return 'mismatch';
+    } catch (e) {
+      debugPrint('[Delete] reauth: $e');
+      return e.toString();
+    }
+    try {
+      await cloud.deleteAccount(
+          uid: p.id, friendCode: friendCode, sentTo: store.sentRequests(p.id));
+    } catch (e) {
+      debugPrint('[Delete] $e');
+      return e.toString();
+    }
+    await store.clearProfileData(p.id);
+    await store.setGuestChosen(false);
+    profile = null;
+    _loadProfileData();
+    notifyListeners();
+    return null;
+  }
+
   Future<void> signOut() async {
     await cloud.signOut();
     await store.setGuestChosen(false);
@@ -462,7 +494,11 @@ class AppState extends ChangeNotifier {
     if (!canUseCloud || p == null) return FriendOp.error;
     if (!online) return FriendOp.offline;
     final r = await cloud.sendRequest(
-        uid: p.id, name: p.name, photoUrl: p.photoUrl, code: code);
+        uid: p.id,
+        name: p.name,
+        photoUrl: p.photoUrl,
+        code: code,
+        onSent: (target) => unawaited(store.addSentRequest(p.id, target)));
     if (r == FriendOp.accepted) {
       lastSync = null; // có bạn mới: tải lại danh sách ngay
       unawaited(sync(force: true));

@@ -15,6 +15,11 @@ class AuthCancelled implements Exception {
   const AuthCancelled();
 }
 
+/// Khi xác nhận xóa tài khoản, người dùng chọn một tài khoản Google khác.
+class AccountMismatch implements Exception {
+  const AccountMismatch();
+}
+
 enum FriendOp { sent, accepted, notFound, self, already, offline, error }
 
 /// Firebase: đăng nhập Google, hồ sơ công khai, kết bạn và điểm của bạn bè.
@@ -72,8 +77,13 @@ class CloudService {
         rethrow;
       }
     }
-    // Android: chọn tài khoản Google trên máy, rồi đổi sang tài khoản Firebase.
-    // Mã client lấy tự động từ google-services.json.
+    final uc = await FirebaseAuth.instance.signInWithCredential(await _googleCredential());
+    return uc.user!;
+  }
+
+  /// Android: chọn tài khoản Google trên máy, lấy chứng thực cho Firebase.
+  /// Mã client lấy tự động từ google-services.json.
+  Future<AuthCredential> _googleCredential() async {
     final google = GoogleSignIn.instance;
     if (!_googleReady) {
       await google.initialize();
@@ -91,9 +101,58 @@ class CloudService {
     }
     final idToken = account.authentication.idToken;
     if (idToken == null) throw Exception('Google did not return an ID token');
-    final uc = await FirebaseAuth.instance
-        .signInWithCredential(GoogleAuthProvider.credential(idToken: idToken));
-    return uc.user!;
+    return GoogleAuthProvider.credential(idToken: idToken);
+  }
+
+  /// Bắt người dùng chọn lại tài khoản Google để xác nhận (bắt buộc trước khi
+  /// xóa tài khoản đăng nhập).
+  Future<void> reauthenticate() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw Exception('Not signed in');
+    try {
+      if (kIsWeb) {
+        await user.reauthenticateWithPopup(GoogleAuthProvider());
+      } else {
+        await user.reauthenticateWithCredential(await _googleCredential());
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-mismatch') throw const AccountMismatch();
+      if (e.code == 'popup-closed-by-user' || e.code == 'cancelled-popup-request') {
+        throw const AuthCancelled();
+      }
+      rethrow;
+    }
+  }
+
+  /// Xóa vĩnh viễn mọi dữ liệu của người chơi trên máy chủ rồi xóa tài khoản
+  /// đăng nhập. Phải gọi [reauthenticate] ngay trước đó.
+  /// [sentTo]: những người mình đã gửi lời mời (để xóa lời mời còn treo).
+  Future<void> deleteAccount({
+    required String uid,
+    String? friendCode,
+    required List<String> sentTo,
+  }) async {
+    final friendIds =
+        (await _friends(uid).get(_server).timeout(_timeout)).docs.map((d) => d.id).toList();
+    final incomingIds =
+        (await _requests(uid).get(_server).timeout(_timeout)).docs.map((d) => d.id).toList();
+
+    final refs = <DocumentReference<Map<String, dynamic>>>[
+      for (final f in friendIds) ...[_friends(uid).doc(f), _friends(f).doc(uid)],
+      for (final r in incomingIds) _requests(uid).doc(r),
+      for (final t in sentTo) _requests(t).doc(uid),
+      if (friendCode != null) _db.collection('friendCodes').doc(friendCode),
+    ];
+    for (var i = 0; i < refs.length; i += 400) {
+      final batch = _db.batch();
+      for (final r in refs.skip(i).take(400)) {
+        batch.delete(r);
+      }
+      await batch.commit().timeout(_timeout);
+    }
+    await _user(uid).delete().timeout(_timeout);
+    await FirebaseAuth.instance.currentUser?.delete();
+    await signOut();
   }
 
   Future<void> signOut() async {
@@ -239,11 +298,13 @@ class CloudService {
         .toList();
   }
 
+  /// Gửi lời mời theo mã kết bạn. [onSent] nhận uid người được mời.
   Future<FriendOp> sendRequest({
     required String uid,
     required String name,
     String? photoUrl,
     required String code,
+    void Function(String targetUid)? onSent,
   }) async {
     final c = code.toUpperCase().replaceAll(RegExp('[^A-Z0-9]'), '');
     if (c.isEmpty) return FriendOp.notFound;
@@ -266,6 +327,7 @@ class CloudService {
         'photoUrl': photoUrl,
         'createdAt': FieldValue.serverTimestamp(),
       }).timeout(_timeout);
+      onSent?.call(target);
       return FriendOp.sent;
     });
   }

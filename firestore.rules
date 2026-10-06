@@ -73,6 +73,8 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid
         && request.resource.data.keys().hasOnly(['uid'])
         && code.size() == 6;
+      // Chủ mã được xóa mã của mình (khi xóa tài khoản).
+      allow delete: if signedIn() && (resource == null || resource.data.uid == request.auth.uid);
     }
 
     match /friendRequests/{toUid}/incoming/{fromUid} {

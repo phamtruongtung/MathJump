@@ -172,6 +172,21 @@ class LocalStore {
   String? pushedKey(String pid) => _p.getString('pushed_$pid');
   Future<void> setPushedKey(String pid, String v) => _p.setString('pushed_$pid', v);
 
+  /// Những người mình đã gửi lời mời kết bạn (để xóa khi xóa tài khoản).
+  List<String> sentRequests(String pid) => _p.getStringList('sent_$pid') ?? const [];
+  Future<void> addSentRequest(String pid, String uid) {
+    final list = {...sentRequests(pid), uid}.toList();
+    return _p.setStringList('sent_$pid', list);
+  }
+
+  /// Xóa toàn bộ dữ liệu của một tài khoản trên máy (khi xóa tài khoản).
+  Future<void> clearProfileData(String pid) async {
+    for (final k in _p.getKeys().toList()) {
+      if (k.endsWith('_$pid')) await _p.remove(k);
+    }
+    if (lastAccountId == pid) await _p.remove('lastAccountId');
+  }
+
   String? friendCode(String pid) => _p.getString('code_$pid');
   Future<void> setFriendCode(String pid, String v) => _p.setString('code_$pid', v);
 

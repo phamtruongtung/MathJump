@@ -42,6 +42,30 @@ void main() {
     expect(s.maxRank('guest'), 0);
   });
 
+  test('deleting an account clears only that account on the device', () async {
+    SharedPreferences.setMockInitialValues({
+      'history_u1': '[]',
+      'maxRank_u1': 3,
+      'code_u1': 'ABC234',
+      'sent_u1': <String>['u9'],
+      'lastAccountId': 'u1',
+      'history_guest': '[{"score":50}]',
+      'history_u2': '[]',
+      'lang': 'vi',
+    });
+    final s = LocalStore();
+    await s.init();
+    await s.clearProfileData('u1');
+    expect(s.hasData('u1'), isFalse);
+    expect(s.maxRank('u1'), 0);
+    expect(s.friendCode('u1'), isNull);
+    expect(s.sentRequests('u1'), isEmpty);
+    expect(s.lastAccountId, isNull);
+    expect(s.hasData('guest'), isTrue);
+    expect(s.hasData('u2'), isTrue);
+    expect(s.lang, 'vi');
+  });
+
   test('cloud rank fields: new tier fields win, legacy ones are shifted', () {
     expect(FriendEntry.cloudTier({'tierBest': 0, 'bestRank': 3}, 'tierBest', 'bestRank'), 0);
     expect(FriendEntry.cloudTier({'bestRank': 2, 'bestScore': 1}, 'tierBest', 'bestRank'), 3);

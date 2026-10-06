@@ -154,6 +154,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst);
                       },
                     ),
+                    if (s.canUseCloud)
+                      TextButton.icon(
+                        icon: Icon(Icons.delete_forever_rounded,
+                            color: AppColors.ink.withValues(alpha: 0.5)),
+                        label: Text(context.tr('deleteAccount'),
+                            style: TextStyle(
+                                color: AppColors.ink.withValues(alpha: 0.6),
+                                fontWeight: FontWeight.w700)),
+                        onPressed: () => _deleteAccount(context, s),
+                      ),
                   ]),
                 ),
                 _section(
@@ -180,6 +190,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _deleteAccount(BuildContext context, AppState s) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('⚠️ ${c.tr('deleteTitle')}',
+            style: const TextStyle(fontWeight: FontWeight.w900)),
+        content: Text(c.tr('deleteBody')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(c.tr('cancel'))),
+          TextButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: Text(c.tr('deleteConfirm'),
+                style: const TextStyle(color: AppColors.red, fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !context.mounted) return;
+
+    // Màn hình chờ trong lúc chọn lại tài khoản và xóa dữ liệu.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(children: [
+            const CircularProgressIndicator(),
+            const SizedBox(width: 16),
+            Text(c.tr('deleting'), style: const TextStyle(fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      ),
+    );
+    final err = await s.deleteAccount();
+    if (!context.mounted) return;
+    Navigator.of(context).pop(); // đóng màn hình chờ
+
+    if (err == null) {
+      showToast(context, context.tr('deleted'));
+      Navigator.of(context).popUntil((r) => r.isFirst);
+    } else if (err.isNotEmpty) {
+      showToast(
+        context,
+        switch (err) {
+          'offline' => context.tr('needOnline'),
+          'mismatch' => context.tr('deleteMismatch'),
+          _ => context.tr('deleteFailed', {'msg': err}),
+        },
+      );
+    }
   }
 
   Widget _section(String title, Widget child) => Container(
