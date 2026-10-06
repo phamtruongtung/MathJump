@@ -38,6 +38,19 @@ void main() {
     }
   });
 
+  test('a higher rank beats any lower-rank record, even with 0 points', () {
+    GameResult g(int rank, int score) => GameResult(
+        score: score, level: 1, correct: score ~/ 10, durationMs: 99999,
+        playedAt: DateTime(2026), rank: rank);
+    expect(g(1, 0).beats(g(0, 500)), isTrue); // vừa lên Đồng rồi thua ngay
+    expect(g(0, 500).beats(g(1, 0)), isFalse);
+    expect(g(1, 120).beats(g(1, 100)), isTrue);
+    expect(g(1, 100).beats(g(1, 100)), isFalse);
+    expect(g(0, 0).beats(null), isFalse); // ván 0 điểm ở hạng đầu: chưa phải kỷ lục
+    expect(g(1, 0).beats(null), isTrue);
+    expect(CloudService.plausible(g(1, 0)), isTrue);
+  });
+
   test('obviously fake scores are rejected', () {
     GameResult r(int score, int level, int correct, int ms) => GameResult(
         score: score, level: level, correct: correct, durationMs: ms, playedAt: DateTime(2026));

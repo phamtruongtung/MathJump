@@ -17,10 +17,10 @@ class GameResult {
     this.rank = 0,
   });
 
-  /// So sánh thành tích: hạng cao hơn thắng, cùng hạng thì điểm cao hơn thắng.
+  /// So sánh thành tích: hạng cao hơn thắng (kể cả khi vừa thăng hạng, 0 điểm),
+  /// cùng hạng thì điểm cao hơn thắng.
   bool beats(GameResult? other) {
-    if (score <= 0) return false;
-    if (other == null) return true;
+    if (other == null) return score > 0 || rank > 0;
     if (rank != other.rank) return rank > other.rank;
     return score > other.score;
   }

@@ -84,7 +84,7 @@ class FriendEntry {
 
   /// Kỷ lục của người này cao hơn kỷ lục [score] ở hạng [rank] không.
   bool beatsRecord(int rank, int score) =>
-      bestScore > 0 && (bestRank > rank || (bestRank == rank && bestScore > score));
+      bestRank > rank || (bestRank == rank && bestScore > score);
 }
 
 class FriendRequest {

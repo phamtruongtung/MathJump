@@ -62,11 +62,19 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 
   /// Những người bạn vừa bị vượt qua trong ván này.
+  /// (so theo hạng trước, điểm sau: trước ván này họ không thua mình,
+  /// sau ván này mình hơn họ).
   List<String> _overtaken(AppState s) {
-    final prev = widget.previousBest?.score ?? 0;
-    final now = widget.result.score;
+    final prev = widget.previousBest;
+    final r = widget.result;
     return s.friends
-        .where((f) => f.bestScore >= prev && f.bestScore < now)
+        .where((f) =>
+            (f.bestScore > 0 || f.bestRank > 0) &&
+            !f.beatsRecord(r.rank, r.score) &&
+            !(f.bestRank == r.rank && f.bestScore == r.score) &&
+            (prev == null || !prev.beats(GameResult(
+                score: f.bestScore, level: 1, correct: 0, durationMs: 0,
+                playedAt: r.playedAt, rank: f.bestRank))))
         .map((f) => f.name)
         .toList();
   }
@@ -182,7 +190,7 @@ class _ResultScreenState extends State<ResultScreen> {
                   child: ResultCard(
                     result: widget.result,
                     newRecord: widget.newRecord,
-                    bestScore: s.best?.score ?? widget.result.score,
+                    best: s.best ?? widget.result,
                     playerName: s.profile?.name ?? '',
                     character: s.character,
                   ),
@@ -266,20 +274,22 @@ class _ResultScreenState extends State<ResultScreen> {
   }
 }
 
-/// Bảng kết quả — cũng chính là ảnh được chia sẻ lên Facebook.
+/// Bảng kết quả — cũng chính là ảnh được chia sẻ khi "Khoe kết quả".
 class ResultCard extends StatelessWidget {
   const ResultCard({
     super.key,
     required this.result,
     required this.newRecord,
-    required this.bestScore,
+    required this.best,
     required this.playerName,
     required this.character,
   });
 
   final GameResult result;
   final bool newRecord;
-  final int bestScore;
+
+  /// Kỷ lục hiện tại của người chơi (hạng + điểm).
+  final GameResult best;
   final String playerName;
   final String character;
 
@@ -347,7 +357,10 @@ class ResultCard extends StatelessWidget {
         Text(
           newRecord
               ? fmtDateTime(result.playedAt)
-              : '${context.tr('yourBest', {'score': bestScore})} • ${fmtDateTime(result.playedAt)}',
+              : '${context.tr('yourBest', {
+                  'rank': '${rankAt(best.rank).emoji} ${context.tr(rankAt(best.rank).key)}',
+                  'score': best.score,
+                })} • ${fmtDateTime(result.playedAt)}',
           style: TextStyle(color: AppColors.ink.withValues(alpha: 0.7), fontWeight: FontWeight.w600),
         ),
       ]),

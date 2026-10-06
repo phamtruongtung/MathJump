@@ -29,13 +29,21 @@ class _GameScreenState extends State<GameScreen>
   late final AnimationController _timer;
 
   late final AppState _app = context.read<AppState>();
-  late final int _rank = _app.selectedRank;
-  bool _promoted = false;
+
+  /// Hạng đang chơi — thăng hạng giữa ván thì đổi ngay sang hạng mới.
+  late int _rank = _app.selectedRank;
+
+  /// Hạng cao nhất vừa thăng trong ván này (null nếu không thăng).
+  int? _promotedTo;
   String? _banner;
 
+  // Level, điểm và số câu đúng tính trong hạng hiện tại (về 0 khi thăng hạng).
   int _level = 1;
   int _score = 0;
   int _levelPoints = 0;
+  int _rankCorrect = 0;
+
+  /// Tổng số câu đúng cả ván = số bậc nhân vật đã leo.
   int _correct = 0;
   int _lastGain = 0;
   late Question _q;
@@ -107,6 +115,7 @@ class _GameScreenState extends State<GameScreen>
       _lastGain = gain;
       _levelPoints += gain;
       _correct++;
+      _rankCorrect++;
       if (_levelPoints >= cfg.pointsToNext) {
         _levelPoints -= cfg.pointsToNext;
         _level++;
@@ -114,15 +123,24 @@ class _GameScreenState extends State<GameScreen>
       }
     });
 
-    // Thăng hạng: chỉ xét khi đang chơi ở hạng cao nhất đã mở khóa.
+    // Thăng hạng (chỉ khi đang chơi ở hạng cao nhất đã mở khóa): chuyển ngay
+    // sang hạng mới, bắt đầu lại từ level 1 với 0 điểm, ván chơi tiếp tục.
     final rank = rankAt(_rank);
-    if (!_promoted && _rank == _app.maxRank && rank.canPromote(_level, _score)) {
-      _promoted = true;
-      _app.unlockRank(_rank + 1);
+    if (_rank == _app.maxRank && rank.canPromote(_level, _score)) {
+      final next = _rank + 1;
+      _app.unlockRank(next);
       HapticFeedback.mediumImpact();
       _app.sound.play(Sfx.record);
-      final next = rankAt(_rank + 1);
-      _showBanner('${next.emoji} ${context.tr('rankUp', {'rank': context.tr(next.key)})}');
+      setState(() {
+        _rank = next;
+        _promotedTo = next;
+        _level = 1;
+        _score = 0;
+        _levelPoints = 0;
+        _rankCorrect = 0;
+      });
+      final r = rankAt(next);
+      _showBanner('${r.emoji} ${context.tr('rankUp', {'rank': context.tr(r.key)})}');
     } else if (levelUp) {
       HapticFeedback.mediumImpact();
       Future.delayed(const Duration(milliseconds: 120), () => _app.sound.play(Sfx.levelup));
@@ -157,10 +175,11 @@ class _GameScreenState extends State<GameScreen>
     });
     Future.delayed(const Duration(milliseconds: 1700), () {
       if (!mounted) return;
+      // Kết quả tính theo hạng cuối cùng đạt được trong ván.
       final result = GameResult(
         score: _score,
         level: _level,
-        correct: _correct,
+        correct: _rankCorrect,
         durationMs: _watch.elapsedMilliseconds,
         playedAt: DateTime.now(),
         rank: _rank,
@@ -173,7 +192,7 @@ class _GameScreenState extends State<GameScreen>
           newRecord: isRecord,
           previousBest: previousBest,
           reason: reason,
-          promotedTo: _promoted ? _rank + 1 : null,
+          promotedTo: _promotedTo,
         ),
       ));
     });
