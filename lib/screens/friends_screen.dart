@@ -26,7 +26,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
   void initState() {
     super.initState();
     // Mở màn hình là làm mới lời mời & điểm của bạn bè.
-    WidgetsBinding.instance.addPostFrameCallback((_) => context.read<AppState>().sync());
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => context.read<AppState>().sync(force: true));
   }
 
   @override
@@ -97,7 +98,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget _body(AppState s) {
     final code = s.friendCode;
     return RefreshIndicator(
-      onRefresh: s.sync,
+      onRefresh: () => s.sync(force: true),
       child: ListView(
         padding: const EdgeInsets.all(16),
         physics: const AlwaysScrollableScrollPhysics(),

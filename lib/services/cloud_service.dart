@@ -136,16 +136,30 @@ class CloudService {
     return code;
   }
 
+  /// Kỷ lục có hợp lý không — giống hệt điều kiện trong firestore.rules
+  /// (mỗi câu đúng được 10–15 điểm, mỗi câu mất ít nhất 0,3 giây...).
+  static bool plausible(GameResult r) =>
+      r.score >= 0 &&
+      r.score <= 2000000 &&
+      r.score <= r.correct * 15 &&
+      r.score >= r.correct * 10 &&
+      r.durationMs >= r.correct * 300 &&
+      r.level >= 1 &&
+      r.level <= r.correct + 1 &&
+      r.rank >= 0;
+
   /// Đẩy kỷ lục và hạng trên máy lên server (chỉ khi cao hơn). Nếu server đang
   /// giữ kỷ lục / hạng cao hơn (chơi trên máy khác) thì trả về để cập nhật máy.
-  Future<({GameResult? best, int maxRank})> syncBest({
+  /// Hạng chỉ được tăng 1 bậc mỗi lần ghi (luật chống gian lận); [complete] =
+  /// false nghĩa là còn phải đẩy tiếp ở lần đồng bộ sau.
+  Future<({GameResult? best, int maxRank, bool complete})> syncBest({
     required String uid,
     GameResult? localBest,
     required int gamesPlayed,
     required int maxRank,
   }) {
     final ref = _user(uid);
-    return _db.runTransaction<({GameResult? best, int maxRank})>((tx) async {
+    return _db.runTransaction<({GameResult? best, int maxRank, bool complete})>((tx) async {
       final snap = await tx.get(ref);
       final d = snap.data() ?? const <String, dynamic>{};
       final remoteGames = (d['gamesPlayed'] as num?)?.toInt() ?? 0;
@@ -161,26 +175,38 @@ class CloudService {
               playedAt: (d['bestAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
               rank: FriendEntry.cloudTier(d, 'tierBest', 'bestRank'),
             );
-      final update = <String, dynamic>{
-        'gamesPlayed': max(remoteGames, gamesPlayed),
-        'tierMax': max(remoteMaxRank, maxRank),
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
+      final newMax = max(remoteMaxRank, min(maxRank, remoteMaxRank + 1));
+      var complete = newMax >= maxRank;
+      final update = <String, dynamic>{};
+      if (newMax > remoteMaxRank) update['tierMax'] = newMax;
+      if (gamesPlayed > remoteGames) update['gamesPlayed'] = gamesPlayed;
+
       GameResult? remoteBetter;
       if (localBest != null && localBest.beats(remoteBest)) {
-        update.addAll({
-          'bestScore': localBest.score,
-          'bestLevel': localBest.level,
-          'bestCorrect': localBest.correct,
-          'bestTimeMs': localBest.durationMs,
-          'tierBest': localBest.rank,
-          'bestAt': Timestamp.fromDate(localBest.playedAt),
-        });
+        if (!plausible(localBest)) {
+          // Dữ liệu cũ thiếu thông tin: bỏ qua, không đẩy lên nữa.
+        } else if (localBest.rank <= newMax) {
+          update.addAll({
+            'bestScore': localBest.score,
+            'bestLevel': localBest.level,
+            'bestCorrect': localBest.correct,
+            'bestTimeMs': localBest.durationMs,
+            'tierBest': localBest.rank,
+            'bestAt': Timestamp.fromDate(localBest.playedAt),
+          });
+        } else {
+          complete = false; // đợi hạng được đẩy lên đủ rồi mới ghi kỷ lục
+        }
       } else if (remoteBest != null && remoteBest.beats(localBest)) {
         remoteBetter = remoteBest;
       }
-      tx.set(ref, update, SetOptions(merge: true));
-      return (best: remoteBetter, maxRank: remoteMaxRank);
+
+      // Không có gì mới thì chỉ đọc, không ghi (tiết kiệm lượt ghi).
+      if (update.isNotEmpty) {
+        update['updatedAt'] = FieldValue.serverTimestamp();
+        tx.set(ref, update, SetOptions(merge: true));
+      }
+      return (best: remoteBetter, maxRank: remoteMaxRank, complete: complete);
     }).timeout(_timeout);
   }
 

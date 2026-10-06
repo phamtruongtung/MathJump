@@ -27,7 +27,7 @@ class LeaderboardScreen extends StatelessWidget {
                   if (s.canUseCloud)
                     IconButton(
                       icon: const Icon(Icons.refresh_rounded),
-                      onPressed: s.syncing ? null : s.sync,
+                      onPressed: s.syncing ? null : () => s.sync(force: true),
                     ),
                 ],
               ),
@@ -74,7 +74,7 @@ class _FriendsBoard extends StatelessWidget {
         : context.tr('lastSync', {'time': fmtDateTime(s.lastSync!)});
 
     return RefreshIndicator(
-      onRefresh: s.sync,
+      onRefresh: () => s.sync(force: true),
       child: ListView(
         padding: const EdgeInsets.all(16),
         physics: const AlwaysScrollableScrollPhysics(),

@@ -4,11 +4,56 @@ service cloud.firestore {
 
     function signedIn() { return request.auth != null; }
 
+    // ---------- Chống gian lận điểm ----------
+    // Mỗi câu đúng được 10–15 điểm; sau mỗi câu đúng game dừng 0,3 giây nên
+    // mỗi câu mất ít nhất 0,3 giây; mỗi level cần ít nhất 2 câu đúng.
+    // (Giống hệt CloudService.plausible trong app.)
+    function validBest(d) {
+      return !('bestScore' in d) || (
+        d.bestScore is int && d.bestScore >= 0 && d.bestScore <= 2000000 &&
+        d.bestCorrect is int && d.bestCorrect >= 0 &&
+        d.bestScore <= d.bestCorrect * 15 &&
+        d.bestScore >= d.bestCorrect * 10 &&
+        d.bestTimeMs is int && d.bestTimeMs >= d.bestCorrect * 300 &&
+        d.bestLevel is int && d.bestLevel >= 1 && d.bestLevel <= d.bestCorrect + 1 &&
+        d.get('tierBest', 0) is int && d.get('tierBest', 0) >= 0 &&
+        d.get('tierBest', 0) <= d.get('tierMax', 6)
+      );
+    }
+
+    // Hạng cao nhất đã ghi trước đó (bản cũ dùng 'maxRank' với Đồng = 0).
+    function oldTierMax(old) {
+      return 'tierMax' in old ? old.tierMax
+        : ('maxRank' in old ? old.maxRank + 1
+        : ('bestScore' in old ? 1 : 0));
+    }
+
+    function validUser(uid) {
+      let d = request.resource.data;
+      let old = resource == null ? {} : resource.data;
+      return request.auth.uid == uid
+        && d.keys().hasOnly(['name', 'photoUrl', 'friendCode', 'bestScore', 'bestLevel',
+             'bestCorrect', 'bestTimeMs', 'bestAt', 'tierBest', 'tierMax', 'gamesPlayed',
+             'updatedAt', 'bestRank', 'maxRank'])
+        && (!('name' in d) || (d.name is string && d.name.size() <= 100))
+        && (!('photoUrl' in d) || d.photoUrl == null
+             || (d.photoUrl is string && d.photoUrl.size() <= 1000))
+        // Mã kết bạn đã có thì không được đổi.
+        && (!('friendCode' in old) || old.friendCode == null || d.friendCode == old.friendCode)
+        // Hạng: 0–6, chỉ được tăng tối đa 1 bậc mỗi lần ghi, không được giảm.
+        && (!('tierMax' in d) || (d.tierMax is int && d.tierMax >= 0 && d.tierMax <= 6
+             && d.tierMax <= oldTierMax(old) + 1 && d.tierMax >= oldTierMax(old)))
+        // Số ván chỉ tăng.
+        && (!('gamesPlayed' in d) || (d.gamesPlayed is int && d.gamesPlayed >= old.get('gamesPlayed', 0)))
+        && validBest(d);
+    }
+
     // Hồ sơ công khai: tên, ảnh, mã kết bạn, kỷ lục. Ai đăng nhập cũng xem được,
-    // chỉ chủ tài khoản được sửa.
+    // chỉ chủ tài khoản được sửa, và phải qua kiểm tra chống gian lận.
     match /users/{uid} {
       allow read: if signedIn();
-      allow write: if signedIn() && request.auth.uid == uid;
+      allow create, update: if signedIn() && validUser(uid);
+      allow delete: if signedIn() && request.auth.uid == uid;
 
       match /friends/{fid} {
         allow read: if signedIn() && request.auth.uid == uid;
@@ -25,14 +70,18 @@ service cloud.firestore {
 
     match /friendCodes/{code} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid'])
+        && code.size() == 6;
     }
 
     match /friendRequests/{toUid}/incoming/{fromUid} {
       allow read, delete: if signedIn() &&
         (request.auth.uid == toUid || request.auth.uid == fromUid);
       allow create, update: if signedIn() &&
-        request.auth.uid == fromUid && fromUid != toUid;
+        request.auth.uid == fromUid && fromUid != toUid
+        && request.resource.data.keys().hasOnly(['name', 'photoUrl', 'createdAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 100;
     }
   }
 }

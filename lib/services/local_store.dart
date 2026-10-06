@@ -164,6 +164,14 @@ class LocalStore {
   int? selectedRank(String pid) => _p.getInt('selRank_$pid');
   Future<void> setSelectedRank(String pid, int v) => _p.setInt('selRank_$pid', v);
 
+  /// Tên/ảnh đã ghi lên máy chủ lần gần nhất (để khỏi ghi lại khi không đổi).
+  String? syncedProfileKey(String pid) => _p.getString('profileKey_$pid');
+  Future<void> setSyncedProfileKey(String pid, String v) => _p.setString('profileKey_$pid', v);
+
+  /// Kỷ lục/hạng đã đẩy lên máy chủ lần gần nhất ("hạng:điểm:hạngCaoNhất").
+  String? pushedKey(String pid) => _p.getString('pushed_$pid');
+  Future<void> setPushedKey(String pid, String v) => _p.setString('pushed_$pid', v);
+
   String? friendCode(String pid) => _p.getString('code_$pid');
   Future<void> setFriendCode(String pid, String v) => _p.setString('code_$pid', v);
 

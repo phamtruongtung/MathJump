@@ -100,6 +100,7 @@ class AppState extends ChangeNotifier {
       );
 
   void _loadProfileData() {
+    _pulledThisSession = false;
     final p = profile;
     if (p == null) {
       history = [];
@@ -388,33 +389,66 @@ class AppState extends ChangeNotifier {
 
   // ---------------- Sync ----------------
 
-  Future<void> sync() async {
+  /// Danh sách bạn bè / lời mời chỉ tải lại tối đa 30 phút một lần; khi người
+  /// chơi chủ động làm mới ([force]) thì tối đa 1 phút một lần.
+  static const friendsRefreshEvery = Duration(minutes: 30);
+
+  /// Đã đọc kỷ lục trên máy chủ trong lần mở app này chưa (để lấy kỷ lục
+  /// chơi trên máy khác). Chỉ cần đọc một lần mỗi lần mở app.
+  bool _pulledThisSession = false;
+
+  String _pushKey() => '${best?.rank}:${best?.score}:$maxRank';
+
+  /// Đồng bộ tiết kiệm lượt đọc/ghi Firestore:
+  /// - Hồ sơ (tên, ảnh, mã kết bạn): chỉ ghi khi chưa có mã hoặc tên/ảnh đổi.
+  /// - Kỷ lục, hạng: chỉ ghi khi có kỷ lục/hạng mới; đọc 1 lần mỗi lần mở app.
+  /// - Bạn bè, lời mời: tối đa 30 phút một lần, hoặc khi [force].
+  Future<void> sync({bool force = false}) async {
     final p = profile;
     if (!canUseCloud || !online || syncing || p == null) return;
     syncing = true;
     notifyListeners();
     try {
-      final code = await cloud.ensureProfile(uid: p.id, name: p.name, photoUrl: p.photoUrl);
-      if (code != null) {
-        friendCode = code;
-        await store.setFriendCode(p.id, code);
+      final profileKey = '${p.name}|${p.photoUrl}';
+      if (friendCode == null || store.syncedProfileKey(p.id) != profileKey) {
+        final code = await cloud.ensureProfile(uid: p.id, name: p.name, photoUrl: p.photoUrl);
+        if (code != null) {
+          friendCode = code;
+          await store.setFriendCode(p.id, code);
+          await store.setSyncedProfileKey(p.id, profileKey);
+        }
       }
-      final remote = await cloud.syncBest(
-          uid: p.id, localBest: best, gamesPlayed: gamesPlayed, maxRank: maxRank);
-      if (remote.best != null) {
-        best = remote.best;
-        await store.setBest(p.id, remote.best!);
+
+      if (!_pulledThisSession || store.pushedKey(p.id) != _pushKey()) {
+        try {
+          final remote = await cloud.syncBest(
+              uid: p.id, localBest: best, gamesPlayed: gamesPlayed, maxRank: maxRank);
+          _pulledThisSession = true;
+          if (remote.best != null) {
+            best = remote.best;
+            await store.setBest(p.id, remote.best!);
+          }
+          if (remote.maxRank > maxRank) {
+            maxRank = remote.maxRank.clamp(0, kRanks.length - 1);
+            await store.setMaxRank(p.id, maxRank);
+          }
+          // Chưa đẩy hết (hạng chỉ được tăng từng bậc mỗi lần ghi) thì lần sau đẩy tiếp.
+          if (remote.complete) await store.setPushedKey(p.id, _pushKey());
+        } catch (e) {
+          debugPrint('[Sync] best: $e');
+        }
       }
-      if (remote.maxRank > maxRank) {
-        maxRank = remote.maxRank.clamp(0, kRanks.length - 1);
-        await store.setMaxRank(p.id, maxRank);
+
+      final last = lastSync;
+      final maxAge = force ? const Duration(minutes: 1) : friendsRefreshEvery;
+      if (last == null || DateTime.now().difference(last) > maxAge) {
+        friends = await cloud.fetchFriends(p.id);
+        await store.setFriends(p.id, friends);
+        _checkOvertakes(p.id);
+        incoming = await cloud.fetchIncoming(p.id);
+        lastSync = DateTime.now();
+        await store.setLastSync(p.id, lastSync!);
       }
-      friends = await cloud.fetchFriends(p.id);
-      await store.setFriends(p.id, friends);
-      _checkOvertakes(p.id);
-      incoming = await cloud.fetchIncoming(p.id);
-      lastSync = DateTime.now();
-      await store.setLastSync(p.id, lastSync!);
     } catch (e) {
       debugPrint('[Sync] $e');
     } finally {
@@ -429,7 +463,10 @@ class AppState extends ChangeNotifier {
     if (!online) return FriendOp.offline;
     final r = await cloud.sendRequest(
         uid: p.id, name: p.name, photoUrl: p.photoUrl, code: code);
-    if (r == FriendOp.accepted) unawaited(sync());
+    if (r == FriendOp.accepted) {
+      lastSync = null; // có bạn mới: tải lại danh sách ngay
+      unawaited(sync(force: true));
+    }
     return r;
   }
 
@@ -444,7 +481,10 @@ class AppState extends ChangeNotifier {
       }
       incoming = incoming.where((r) => r.fromUid != req.fromUid).toList();
       notifyListeners();
-      if (accept) unawaited(sync());
+      if (accept) {
+        lastSync = null; // có bạn mới: tải lại danh sách ngay
+        unawaited(sync(force: true));
+      }
       return true;
     } catch (e) {
       debugPrint('[Friends] $e');

@@ -142,7 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ? const SizedBox(
                                 width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                             : null,
-                        onTap: s.syncing ? null : s.sync,
+                        onTap: s.syncing ? null : () => s.sync(force: true),
                       ),
                     const SizedBox(height: 6),
                     TextButton.icon(
