@@ -70,6 +70,10 @@ void main() {
     expect(FriendEntry.cloudTier({'tierBest': 0, 'bestRank': 3}, 'tierBest', 'bestRank'), 0);
     expect(FriendEntry.cloudTier({'bestRank': 2, 'bestScore': 1}, 'tierBest', 'bestRank'), 3);
     expect(FriendEntry.cloudTier({'bestScore': 10}, 'tierBest', 'bestRank'), 1);
+    // Hồ sơ bản mới: có kỷ lục ở Tân Binh nhưng chưa ghi tierMax → vẫn là Tân Binh,
+    // không được coi là dữ liệu cũ (lỗi khiến không thăng hạng được trong ván).
+    expect(FriendEntry.cloudTier({'bestScore': 1522, 'tierBest': 0}, 'tierMax', 'maxRank'), 0);
+    expect(FriendEntry.cloudTier({'bestScore': 900, 'tierBest': 2}, 'tierMax', 'maxRank'), 2);
     expect(FriendEntry.cloudTier({}, 'tierBest', 'bestRank'), 0);
   });
 }

@@ -58,6 +58,11 @@ class FriendEntry {
     if (v != null) return v.toInt();
     final old = m[legacyField] as num?;
     if (old != null) return old.toInt() + 1;
+    // Hồ sơ bản mới (có tierBest) nhưng chưa ghi tierMax: hạng cao nhất ít
+    // nhất bằng hạng của kỷ lục — KHÔNG được coi là dữ liệu bản cũ.
+    final tierBest = m['tierBest'] as num?;
+    if (tierBest != null) return tierBest.toInt();
+    // Chỉ dữ liệu bản cũ (chưa có hạng Tân Binh) mới có điểm mà không có hạng.
     return m['bestScore'] != null ? 1 : 0;
   }
 

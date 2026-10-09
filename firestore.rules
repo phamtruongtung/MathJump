@@ -22,10 +22,12 @@ service cloud.firestore {
     }
 
     // Hạng cao nhất đã ghi trước đó (bản cũ dùng 'maxRank' với Đồng = 0).
+    // (Giống FriendEntry.cloudTier trong app.)
     function oldTierMax(old) {
       return 'tierMax' in old ? old.tierMax
         : ('maxRank' in old ? old.maxRank + 1
-        : ('bestScore' in old ? 1 : 0));
+        : ('tierBest' in old ? old.tierBest
+        : ('bestScore' in old ? 1 : 0)));
     }
 
     function validUser(uid) {

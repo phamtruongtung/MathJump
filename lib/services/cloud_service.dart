@@ -263,7 +263,8 @@ class CloudService {
       final newMax = max(remoteMaxRank, min(maxRank, remoteMaxRank + 1));
       var complete = newMax >= maxRank;
       final update = <String, dynamic>{};
-      if (newMax > remoteMaxRank) update['tierMax'] = newMax;
+      // Luôn ghi tierMax nếu hồ sơ chưa có, để lần sau không phải đoán.
+      if (newMax > remoteMaxRank || !d.containsKey('tierMax')) update['tierMax'] = newMax;
       if (gamesPlayed > remoteGames) update['gamesPlayed'] = gamesPlayed;
 
       GameResult? remoteBetter;

@@ -501,8 +501,15 @@ class AppState extends ChangeNotifier {
             await store.setBest(p.id, remote.best!);
           }
           if (remote.maxRank > maxRank) {
+            // Đã thăng hạng trên máy khác: nếu đang chọn hạng cao nhất cũ thì
+            // chuyển theo, để vẫn thăng hạng tiếp được trong ván.
+            final followMax = selectedRank == maxRank;
             maxRank = remote.maxRank.clamp(0, kRanks.length - 1);
             await store.setMaxRank(p.id, maxRank);
+            if (followMax) {
+              selectedRank = maxRank;
+              await store.setSelectedRank(p.id, maxRank);
+            }
           }
           // Chưa đẩy hết (hạng chỉ được tăng từng bậc mỗi lần ghi) thì lần sau đẩy tiếp.
           if (remote.complete) await store.setPushedKey(p.id, _pushKey());
