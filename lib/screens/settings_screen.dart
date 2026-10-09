@@ -5,6 +5,7 @@ import '../l10n/strings.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
+import '../models/names.dart';
 import 'login_screen.dart';
 import 'tutorial_screen.dart';
 import '../version.dart';
@@ -98,25 +99,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ]),
                 ),
-                if (p != null && p.isGuest)
+                if (p != null)
                   _section(
-                    context.tr('yourName'),
-                    Row(children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _name,
-                          maxLength: 20,
-                          decoration: const InputDecoration(counterText: ''),
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                    context.tr('displayName'),
+                    Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Row(children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _name,
+                            maxLength: displayNameMax,
+                            decoration: InputDecoration(
+                              counterText: '',
+                              helperText: context.tr('displayNameHint'),
+                            ),
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                          ),
                         ),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          await s.setGuestName(_name.text);
-                          if (context.mounted) showToast(context, context.tr('saved'));
-                        },
-                        child: Text(context.tr('save')),
-                      ),
+                        TextButton(
+                          onPressed: () async {
+                            final err = await s.setDisplayName(_name.text);
+                            if (!context.mounted) return;
+                            if (err == null) _name.text = s.profile?.name ?? _name.text;
+                            showToast(context, context.tr(err ?? 'nameSaved'));
+                          },
+                          child: Text(context.tr('save')),
+                        ),
+                      ]),
+                      if (s.canUseCloud) ...[
+                        const SizedBox(height: 8),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(context.tr('searchableTitle'),
+                              style: const TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: Text(context.tr('searchableDesc')),
+                          value: s.searchable,
+                          onChanged: s.setSearchable,
+                        ),
+                      ],
                     ]),
                   ),
                 _section(

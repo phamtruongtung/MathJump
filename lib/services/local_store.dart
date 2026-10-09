@@ -176,6 +176,18 @@ class LocalStore {
   int? selectedRank(String pid) => _p.getInt('selRank_$pid');
   Future<void> setSelectedRank(String pid, int v) => _p.setInt('selRank_$pid', v);
 
+  /// Tên hiển thị người chơi tự đặt (thay cho tên tài khoản Google).
+  String? customName(String pid) => _p.getString('customName_$pid');
+  Future<void> setCustomName(String pid, String v) => _p.setString('customName_$pid', v);
+
+  /// Cho phép người khác tìm thấy / gợi ý kết bạn (mặc định: có).
+  bool searchable(String pid) => _p.getBool('searchable_$pid') ?? true;
+  Future<void> setSearchable(String pid, bool v) => _p.setBool('searchable_$pid', v);
+
+  /// Danh sách bạn đã ghi lên hồ sơ công khai lần gần nhất.
+  String? pushedFriendIds(String pid) => _p.getString('pushedFriends_$pid');
+  Future<void> setPushedFriendIds(String pid, String v) => _p.setString('pushedFriends_$pid', v);
+
   /// Tên/ảnh đã ghi lên máy chủ lần gần nhất (để khỏi ghi lại khi không đổi).
   String? syncedProfileKey(String pid) => _p.getString('profileKey_$pid');
   Future<void> setSyncedProfileKey(String pid, String v) => _p.setString('profileKey_$pid', v);

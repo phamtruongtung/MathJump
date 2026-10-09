@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../models/social.dart';
 import '../services/cloud_service.dart';
@@ -20,7 +21,11 @@ class FriendsScreen extends StatefulWidget {
 
 class _FriendsScreenState extends State<FriendsScreen> {
   final _code = TextEditingController();
+  final _search = TextEditingController();
   bool _adding = false;
+  bool _searching = false;
+  List<FriendEntry>? _results; // null = chưa tìm
+  final _sending = <String>{};
 
   @override
   void initState() {
@@ -33,8 +38,81 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   void dispose() {
     _code.dispose();
+    _search.dispose();
     super.dispose();
   }
+
+  Future<void> _doSearch() async {
+    final q = _search.text.trim();
+    if (q.length < 2) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _searching = true);
+    final res = await context.read<AppState>().searchPlayers(q);
+    if (!mounted) return;
+    setState(() {
+      _searching = false;
+      _results = res ?? const [];
+    });
+    if (res == null) showToast(context, context.tr('needOnline'));
+  }
+
+  Future<void> _addByUid(String uid) async {
+    setState(() => _sending.add(uid));
+    final r = await context.read<AppState>().addFriendByUid(uid);
+    if (!mounted) return;
+    setState(() => _sending.remove(uid));
+    showToast(context, context.tr('fr_${r.name}'));
+  }
+
+  /// Một dòng người chơi (kết quả tìm kiếm / gợi ý) kèm nút kết bạn hoặc trạng thái.
+  Widget _playerRow(AppState s, FriendEntry f, String subtitle) {
+    final Widget trailing;
+    if (s.isFriend(f.uid)) {
+      trailing = Pill(text: '💛 ${context.tr('alreadyFriend')}', color: AppColors.pink, fontSize: 13);
+    } else if (s.requestFrom(f.uid)) {
+      trailing = Pill(text: context.tr('requestFromThem'), color: AppColors.orange, fontSize: 13);
+    } else if (s.requestSentTo(f.uid)) {
+      trailing = Pill(text: '✓ ${context.tr('requestSent')}', color: Colors.grey, fontSize: 13);
+    } else {
+      trailing = SizedBox(
+        height: 44,
+        child: BubblyButton(
+          color: AppColors.green,
+          fontSize: 15,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          onPressed: _sending.contains(f.uid) ? null : () => _addByUid(f.uid),
+          child: _sending.contains(f.uid)
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+              : Text('➕ ${context.tr('add')}'),
+        ),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(10),
+      decoration: cardDecoration(),
+      child: Row(children: [
+        PlayerAvatar(name: f.name, photoUrl: f.photoUrl),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(f.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            Text(subtitle, style: TextStyle(color: AppColors.ink.withValues(alpha: 0.7))),
+          ]),
+        ),
+        trailing,
+      ]),
+    );
+  }
+
+  String _recordText(FriendEntry f) =>
+      '${rankAt(f.bestRank).emoji} ${context.tr(rankAt(f.bestRank).key)} • ⭐ ${f.bestScore}';
 
   Future<void> _add() async {
     final s = context.read<AppState>();
@@ -175,6 +253,50 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ]),
           ),
 
+          // Tìm người chơi theo tên / email
+          _header('🔍 ${context.tr('findPlayers')}'),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: cardDecoration(),
+            child: Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: _search,
+                  textInputAction: TextInputAction.search,
+                  keyboardType: TextInputType.text,
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  decoration: InputDecoration(
+                    hintText: context.tr('searchHint'),
+                    border: InputBorder.none,
+                  ),
+                  onSubmitted: (_) => _doSearch(),
+                ),
+              ),
+              SizedBox(
+                height: 52,
+                child: BubblyButton(
+                  color: AppColors.blue,
+                  fontSize: 17,
+                  onPressed: _searching ? null : _doSearch,
+                  child: _searching
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
+                      : Text('🔍 ${context.tr('search')}'),
+                ),
+              ),
+            ]),
+          ),
+          if (_results != null) ...[
+            const SizedBox(height: 10),
+            if (_results!.isEmpty)
+              Text(context.tr('noResults'),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+            for (final f in _results!) _playerRow(s, f, _recordText(f)),
+          ],
+
           // Lời mời
           if (s.incoming.isNotEmpty) ...[
             _header('📩 ${context.tr('requests')}'),
@@ -203,6 +325,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   ),
                 ]),
               ),
+          ],
+
+          // Gợi ý kết bạn (bạn của bạn)
+          if (s.suggestions.isNotEmpty) ...[
+            _header('✨ ${context.tr('suggestions')}'),
+            for (final sg in s.suggestions)
+              _playerRow(s, sg.entry, context.tr('mutualFriends', {'n': sg.mutual})),
           ],
 
           // Danh sách bạn

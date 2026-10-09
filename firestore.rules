@@ -36,8 +36,15 @@ service cloud.firestore {
       return request.auth.uid == uid
         && d.keys().hasOnly(['name', 'photoUrl', 'friendCode', 'bestScore', 'bestLevel',
              'bestCorrect', 'bestTimeMs', 'bestAt', 'tierBest', 'tierMax', 'gamesPlayed',
-             'updatedAt', 'bestRank', 'maxRank'])
+             'updatedAt', 'bestRank', 'maxRank',
+             'nameLower', 'searchable', 'emailHash', 'friendIds'])
         && (!('name' in d) || (d.name is string && d.name.size() <= 100))
+        // Tìm kiếm: tên không dấu, cờ cho phép tìm, mã SHA-256 của email (64 ký tự).
+        && (!('nameLower' in d) || (d.nameLower is string && d.nameLower.size() <= 100))
+        && (!('searchable' in d) || d.searchable is bool)
+        && (!('emailHash' in d) || (d.emailHash is string && d.emailHash.size() == 64))
+        // Danh sách bạn (để gợi ý kết bạn).
+        && (!('friendIds' in d) || (d.friendIds is list && d.friendIds.size() <= 500))
         && (!('photoUrl' in d) || d.photoUrl == null
              || (d.photoUrl is string && d.photoUrl.size() <= 1000))
         // Mã kết bạn đã có thì không được đổi.

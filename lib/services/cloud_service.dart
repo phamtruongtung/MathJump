@@ -10,6 +10,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../firebase_web_options.dart';
 import '../models/game_result.dart';
+import '../models/names.dart';
 import '../models/social.dart';
 
 class AuthCancelled implements Exception {
@@ -192,14 +193,23 @@ class CloudService {
 
   // ---------------- Profile & best score ----------------
 
-  /// Tạo/cập nhật hồ sơ công khai và trả về mã kết bạn (6 ký tự).
-  Future<String?> ensureProfile({
+  /// Tạo/cập nhật hồ sơ công khai. Trả về mã kết bạn (6 ký tự) và tên đang
+  /// dùng trên máy chủ.
+  /// [keepRemoteName]: máy này chưa đặt tên riêng — nếu hồ sơ đã có tên (đặt
+  /// trên máy khác) thì giữ tên đó thay vì ghi đè bằng tên tài khoản Google.
+  /// [searchable] = false: không cho tìm thấy / gợi ý, xóa mã email.
+  Future<({String? code, String name})> ensureProfile({
     required String uid,
     required String name,
     String? photoUrl,
+    bool keepRemoteName = false,
+    bool searchable = true,
+    String? email,
   }) async {
     final ref = _user(uid);
     final snap = await ref.get(_server).timeout(_timeout);
+    final remoteName = snap.data()?['name'] as String?;
+    final useName = keepRemoteName && remoteName != null && remoteName.isNotEmpty ? remoteName : name;
     var code = snap.data()?['friendCode'] as String?;
     for (var i = 0; i < 10 && code == null; i++) {
       final candidate = _randomCode();
@@ -213,12 +223,64 @@ class CloudService {
       if (ok) code = candidate;
     }
     await ref.set({
-      'name': name,
+      'name': useName,
+      'nameLower': normalizeName(useName),
       'photoUrl': photoUrl,
       'friendCode': code,
+      'searchable': searchable,
+      'emailHash': searchable && email != null && email.isNotEmpty
+          ? emailHash(email)
+          : FieldValue.delete(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true)).timeout(_timeout);
-    return code;
+    return (code: code, name: useName);
+  }
+
+  /// Ghi danh sách bạn vào hồ sơ công khai (để người khác tính gợi ý kết bạn).
+  Future<void> updateFriendIds(String uid, List<String> ids) =>
+      _user(uid).set({'friendIds': ids.take(500).toList()}, SetOptions(merge: true)).timeout(_timeout);
+
+  /// Tải hồ sơ công khai của nhiều người (tối đa 10 người mỗi lần truy vấn).
+  Future<List<FriendEntry>> fetchProfiles(List<String> ids) async {
+    final out = <FriendEntry>[];
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk = ids.sublist(i, min(i + 10, ids.length));
+      final q = await _db
+          .collection('users')
+          .where(FieldPath.documentId, whereIn: chunk)
+          .get(_server)
+          .timeout(_timeout);
+      out.addAll(q.docs.map((d) => FriendEntry.fromMap(d.id, d.data())));
+    }
+    return out;
+  }
+
+  /// Tìm người chơi theo phần đầu của tên (không phân biệt dấu, hoa thường).
+  Future<List<FriendEntry>> searchByName(String query) async {
+    final q = normalizeName(query);
+    if (q.length < 2) return const [];
+    final res = await _db
+        .collection('users')
+        .where('nameLower', isGreaterThanOrEqualTo: q)
+        .where('nameLower', isLessThan: '$q')
+        .limit(20)
+        .get(_server)
+        .timeout(_timeout);
+    return res.docs
+        .map((d) => FriendEntry.fromMap(d.id, d.data()))
+        .where((f) => f.searchable)
+        .toList();
+  }
+
+  /// Tìm người chơi theo đúng toàn bộ email (so mã hóa, không lưu email thật).
+  Future<List<FriendEntry>> searchByEmail(String email) async {
+    final res = await _db
+        .collection('users')
+        .where('emailHash', isEqualTo: emailHash(email))
+        .limit(5)
+        .get(_server)
+        .timeout(_timeout);
+    return res.docs.map((d) => FriendEntry.fromMap(d.id, d.data())).toList();
   }
 
   /// Kỷ lục có hợp lý không — giống hệt điều kiện trong firestore.rules
@@ -300,18 +362,7 @@ class CloudService {
 
   Future<List<FriendEntry>> fetchFriends(String uid) async {
     final fs = await _friends(uid).get(_server).timeout(_timeout);
-    final ids = fs.docs.map((d) => d.id).toList();
-    final out = <FriendEntry>[];
-    for (var i = 0; i < ids.length; i += 10) {
-      final chunk = ids.sublist(i, min(i + 10, ids.length));
-      final q = await _db
-          .collection('users')
-          .where(FieldPath.documentId, whereIn: chunk)
-          .get(_server)
-          .timeout(_timeout);
-      out.addAll(q.docs.map((d) => FriendEntry.fromMap(d.id, d.data())));
-    }
-    return out;
+    return fetchProfiles(fs.docs.map((d) => d.id).toList());
   }
 
   Future<List<FriendRequest>> fetchIncoming(String uid) async {
@@ -340,23 +391,43 @@ class CloudService {
           await _db.collection('friendCodes').doc(c).get(_server).timeout(_timeout);
       final target = codeSnap.data()?['uid'] as String?;
       if (target == null) return FriendOp.notFound;
-      if (target == uid) return FriendOp.self;
-      final already = await _friends(uid).doc(target).get(_server).timeout(_timeout);
-      if (already.exists) return FriendOp.already;
-      // Người kia đã mời mình trước → đồng ý luôn.
-      final reverse = await _requests(uid).doc(target).get(_server).timeout(_timeout);
-      if (reverse.exists) {
-        await accept(uid: uid, fromUid: target);
-        return FriendOp.accepted;
-      }
-      await _requests(target).doc(uid).set({
-        'name': name,
-        'photoUrl': photoUrl,
-        'createdAt': FieldValue.serverTimestamp(),
-      }).timeout(_timeout);
-      onSent?.call(target);
-      return FriendOp.sent;
+      return _sendTo(uid: uid, name: name, photoUrl: photoUrl, target: target, onSent: onSent);
     });
+  }
+
+  /// Gửi lời mời tới người chơi [target] (từ kết quả tìm kiếm / gợi ý).
+  Future<FriendOp> sendRequestTo({
+    required String uid,
+    required String name,
+    String? photoUrl,
+    required String target,
+    void Function(String targetUid)? onSent,
+  }) =>
+      _guard(() => _sendTo(uid: uid, name: name, photoUrl: photoUrl, target: target, onSent: onSent));
+
+  Future<FriendOp> _sendTo({
+    required String uid,
+    required String name,
+    String? photoUrl,
+    required String target,
+    void Function(String targetUid)? onSent,
+  }) async {
+    if (target == uid) return FriendOp.self;
+    final already = await _friends(uid).doc(target).get(_server).timeout(_timeout);
+    if (already.exists) return FriendOp.already;
+    // Người kia đã mời mình trước → đồng ý luôn.
+    final reverse = await _requests(uid).doc(target).get(_server).timeout(_timeout);
+    if (reverse.exists) {
+      await accept(uid: uid, fromUid: target);
+      return FriendOp.accepted;
+    }
+    await _requests(target).doc(uid).set({
+      'name': name,
+      'photoUrl': photoUrl,
+      'createdAt': FieldValue.serverTimestamp(),
+    }).timeout(_timeout);
+    onSent?.call(target);
+    return FriendOp.sent;
   }
 
   Future<void> accept({required String uid, required String fromUid}) async {

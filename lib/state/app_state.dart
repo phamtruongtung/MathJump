@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../models/game_result.dart';
+import '../models/names.dart';
 import '../models/social.dart';
 import '../services/cloud_service.dart';
 import '../services/local_store.dart';
@@ -66,12 +67,7 @@ class AppState extends ChangeNotifier {
     final user = cloud.currentUser;
     if (user != null) {
       await store.setLastAccountId(user.uid);
-      profile = Profile(
-        id: user.uid,
-        name: user.displayName ?? 'Player',
-        photoUrl: user.photoURL,
-        isGuest: false,
-      );
+      profile = _accountProfile(user.uid, user.displayName, user.photoURL, user.email);
     } else if (store.guestChosen) {
       profile = _guestProfile();
     }
@@ -99,8 +95,20 @@ class AppState extends ChangeNotifier {
         isGuest: true,
       );
 
+  /// Hồ sơ tài khoản Google: tên tự đặt (nếu có) thay cho tên Google; ảnh
+  /// vẫn lấy từ Google.
+  Profile _accountProfile(String uid, String? googleName, String? photo, String? email) =>
+      Profile(
+        id: uid,
+        name: store.customName(uid) ?? googleName ?? 'Player',
+        photoUrl: photo,
+        isGuest: false,
+        email: email,
+      );
+
   void _loadProfileData() {
     _pulledThisSession = false;
+    suggestions = [];
     final p = profile;
     if (p == null) {
       history = [];
@@ -314,12 +322,35 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setGuestName(String v) async {
-    final name = v.trim();
-    if (name.isEmpty) return;
-    await store.setGuestName(name);
-    if (profile?.isGuest == true) profile = _guestProfile();
+  /// Đổi tên hiển thị (khách hoặc tài khoản Google). Trả về null nếu thành
+  /// công, hoặc khóa thông báo lỗi (nameTooShort / nameTooLong / nameBad).
+  Future<String?> setDisplayName(String raw) async {
+    final p = profile;
+    if (p == null) return 'nameTooShort';
+    final err = validateDisplayName(raw);
+    if (err != null) return err;
+    final name = cleanDisplayName(raw);
+    if (p.isGuest) {
+      await store.setGuestName(name);
+      profile = _guestProfile();
+    } else {
+      await store.setCustomName(p.id, name);
+      profile = Profile(
+          id: p.id, name: name, photoUrl: p.photoUrl, isGuest: false, email: p.email);
+      unawaited(sync()); // tên đổi → hồ sơ trên máy chủ được ghi lại
+    }
     notifyListeners();
+    return null;
+  }
+
+  bool get searchable => profile == null ? true : store.searchable(profile!.id);
+
+  Future<void> setSearchable(bool v) async {
+    final p = profile;
+    if (p == null) return;
+    await store.setSearchable(p.id, v);
+    notifyListeners();
+    unawaited(sync());
   }
 
   // ---------------- Auth ----------------
@@ -337,12 +368,7 @@ class AppState extends ChangeNotifier {
     if (!cloud.ready) return 'firebaseMissing';
     try {
       final u = await cloud.signInWithGoogle();
-      final np = Profile(
-        id: u.uid,
-        name: u.displayName ?? 'Player',
-        photoUrl: u.photoURL,
-        isGuest: false,
-      );
+      final np = _accountProfile(u.uid, u.displayName, u.photoURL, u.email);
       // Lần đầu đăng nhập tài khoản này trên máy: mang theo thành tích đang có
       // (của tài khoản vừa dùng, tài khoản Facebook cũ, hoặc chế độ khách).
       if (!store.hasData(np.id)) {
@@ -481,13 +507,28 @@ class AppState extends ChangeNotifier {
     syncing = true;
     notifyListeners();
     try {
-      final profileKey = '${p.name}|${p.photoUrl}';
+      final findable = store.searchable(p.id);
+      final profileKey = '${p.name}|${p.photoUrl}|$findable|${p.email != null}';
       if (friendCode == null || store.syncedProfileKey(p.id) != profileKey) {
-        final code = await cloud.ensureProfile(uid: p.id, name: p.name, photoUrl: p.photoUrl);
-        if (code != null) {
-          friendCode = code;
-          await store.setFriendCode(p.id, code);
-          await store.setSyncedProfileKey(p.id, profileKey);
+        final r = await cloud.ensureProfile(
+          uid: p.id,
+          name: p.name,
+          photoUrl: p.photoUrl,
+          // Chưa tự đặt tên trên máy này: giữ tên đã đặt trên máy khác (nếu có).
+          keepRemoteName: store.customName(p.id) == null,
+          searchable: findable,
+          email: p.email,
+        );
+        if (r.name != p.name) {
+          await store.setCustomName(p.id, r.name);
+          profile = Profile(
+              id: p.id, name: r.name, photoUrl: p.photoUrl, isGuest: false, email: p.email);
+        }
+        if (r.code != null) {
+          friendCode = r.code;
+          await store.setFriendCode(p.id, r.code!);
+          await store.setSyncedProfileKey(
+              p.id, '${r.name}|${p.photoUrl}|$findable|${p.email != null}');
         }
       }
 
@@ -527,6 +568,8 @@ class AppState extends ChangeNotifier {
         incoming = await cloud.fetchIncoming(p.id);
         lastSync = DateTime.now();
         await store.setLastSync(p.id, lastSync!);
+        await _pushFriendIds(p.id);
+        await _loadSuggestions(p.id);
       }
     } catch (e) {
       debugPrint('[Sync] $e');
@@ -534,6 +577,89 @@ class AppState extends ChangeNotifier {
       syncing = false;
       notifyListeners();
     }
+  }
+
+  // ---------------- Gợi ý & tìm kiếm ----------------
+
+  /// Gợi ý kết bạn (bạn của bạn), kèm số bạn chung.
+  List<({FriendEntry entry, int mutual})> suggestions = [];
+
+  /// Ghi danh sách bạn lên hồ sơ công khai khi có thay đổi (để người khác
+  /// tính được gợi ý "bạn của bạn"). Chỉ 1 lượt ghi khi danh sách đổi.
+  Future<void> _pushFriendIds(String pid) async {
+    final ids = friends.map((f) => f.uid).toList()..sort();
+    final key = ids.join(',');
+    if (store.pushedFriendIds(pid) == key) return;
+    try {
+      await cloud.updateFriendIds(pid, ids);
+      await store.setPushedFriendIds(pid, key);
+    } catch (e) {
+      debugPrint('[Sync] friendIds: $e');
+    }
+  }
+
+  /// Tính gợi ý từ danh sách bạn của bạn bè (đã có sẵn khi tải bạn bè), rồi
+  /// tải hồ sơ của tối đa 10 người được gợi ý.
+  Future<void> _loadSuggestions(String pid) async {
+    final counts = friendSuggestions(
+      myUid: pid,
+      friends: friends,
+      exclude: {...incoming.map((r) => r.fromUid), ...store.sentRequests(pid)},
+    );
+    if (counts.isEmpty) {
+      suggestions = [];
+      return;
+    }
+    try {
+      final profiles = await cloud.fetchProfiles(counts.keys.toList());
+      suggestions = [
+        for (final f in profiles)
+          if (f.searchable) (entry: f, mutual: counts[f.uid] ?? 0),
+      ]..sort((a, b) => b.mutual.compareTo(a.mutual));
+    } catch (e) {
+      debugPrint('[Sync] suggestions: $e');
+    }
+  }
+
+  /// Tìm người chơi: có '@' thì tìm theo đúng email, không thì theo tên.
+  /// null = cần đăng nhập / cần mạng.
+  Future<List<FriendEntry>?> searchPlayers(String query) async {
+    final p = profile;
+    if (!canUseCloud || p == null || !online) return null;
+    final q = query.trim();
+    try {
+      final res = q.contains('@') ? await cloud.searchByEmail(q) : await cloud.searchByName(q);
+      return res.where((f) => f.uid != p.id).toList();
+    } catch (e) {
+      debugPrint('[Search] $e');
+      return null;
+    }
+  }
+
+  bool isFriend(String uid) => friends.any((f) => f.uid == uid);
+  bool requestSentTo(String uid) => profile != null && store.sentRequests(profile!.id).contains(uid);
+  bool requestFrom(String uid) => incoming.any((r) => r.fromUid == uid);
+
+  /// Gửi lời mời kết bạn tới người chơi tìm thấy / được gợi ý.
+  Future<FriendOp> addFriendByUid(String target) async {
+    final p = profile;
+    if (!canUseCloud || p == null) return FriendOp.error;
+    if (!online) return FriendOp.offline;
+    final r = await cloud.sendRequestTo(
+        uid: p.id,
+        name: p.name,
+        photoUrl: p.photoUrl,
+        target: target,
+        onSent: (t) => unawaited(store.addSentRequest(p.id, t)));
+    if (r == FriendOp.sent) {
+      suggestions = suggestions.where((s) => s.entry.uid != target).toList();
+      notifyListeners();
+    }
+    if (r == FriendOp.accepted) {
+      lastSync = null; // có bạn mới: tải lại danh sách ngay
+      unawaited(sync(force: true));
+    }
+    return r;
   }
 
   Future<FriendOp> addFriend(String code) async {
