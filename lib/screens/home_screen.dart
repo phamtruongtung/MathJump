@@ -11,6 +11,7 @@ import '../widgets/lives.dart';
 import 'friends_screen.dart';
 import 'leaderboard_screen.dart';
 import 'settings_screen.dart';
+import 'shop_screen.dart';
 import 'tutorial_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -120,7 +121,19 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     const _RankCard(),
                     const SizedBox(height: 12),
-                    const LivesBar(showAdButton: true),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 10,
+                      runSpacing: 6,
+                      children: [
+                        const LivesBar(showAdButton: true),
+                        GestureDetector(
+                          onTap: () => _go(context, const ShopScreen()),
+                          child: Pill(text: '⏱️ ×${s.extraTimes}', color: AppColors.blue, fontSize: 15),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 10),
                     SizedBox(
                       height: 84,
@@ -145,7 +158,10 @@ class HomeScreen extends StatelessWidget {
                       _menu(context, '👫', context.tr('friends'), AppColors.pink,
                           () => _go(context, const FriendsScreen()),
                           badge: s.incoming.length),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
+                      _menu(context, '🛒', context.tr('shop'), AppColors.green,
+                          () => _go(context, const ShopScreen())),
+                      const SizedBox(width: 10),
                       _menu(context, '⚙️', context.tr('settings'), AppColors.blue,
                           () => _go(context, const SettingsScreen())),
                     ]),
@@ -239,7 +255,10 @@ class _OvertakeBanner extends StatelessWidget {
   }
 }
 
-String _fmtSec(double v) => v == v.roundToDouble() ? '${v.round()}' : v.toStringAsFixed(1);
+/// Mô tả phạm vi phép tính của hạng, ví dụ "➕➖ đến 100 · ✖️➗ đến 9".
+String _rangeText(BuildContext c, Rank r) => r.mulFrom > 1000
+    ? c.tr('rankRange', {'add': r.addEnd})
+    : c.tr('rankRangeMul', {'add': r.addEnd, 'f': r.factorEnd});
 
 /// Thẻ hạng đang chọn + mục tiêu thăng hạng. Bấm để đổi hạng.
 class _RankCard extends StatelessWidget {
@@ -253,7 +272,7 @@ class _RankCard extends StatelessWidget {
     if (r.isTop) {
       goal = context.tr('topRank');
     } else if (s.selectedRank < s.maxRank) {
-      goal = context.tr('rankTime', {'start': _fmtSec(r.startTime), 'end': _fmtSec(r.endTime)});
+      goal = _rangeText(context, r);
     } else {
       goal = context.tr('nextRankGoal', {
         'rank': context.tr(rankAt(r.index + 1).key),
@@ -310,7 +329,7 @@ void _showRankPicker(BuildContext context) {
                 final selected = r.index == s.selectedRank;
                 final prev = r.index == 0 ? null : rankAt(r.index - 1);
                 final subtitle = unlocked
-                    ? c.tr('rankTime', {'start': _fmtSec(r.startTime), 'end': _fmtSec(r.endTime)})
+                    ? _rangeText(c, r)
                     : c.tr('rankLocked', {
                         'level': prev!.promoteLevel,
                         'score': prev.promoteScore,

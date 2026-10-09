@@ -93,9 +93,11 @@ const _vi = <String, String>{
   'syncNow': 'Đồng bộ ngay',
   'howToPlay': 'Cách chơi',
   'howToPlayBody':
-      'Chọn con số hoặc dấu (+ − × ÷) còn thiếu để phép tính đúng trước khi hết giờ. '
-          'Mỗi câu đúng, nhân vật nhảy lên một bậc. Trả lời càng nhanh càng được nhiều điểm. '
-          'Đủ điểm sẽ lên level: số lớn hơn, thời gian ngắn hơn. Sai hoặc hết giờ là kết thúc!\n\n'
+      'Chọn con số hoặc dấu (+ − × ÷) còn thiếu để phép tính đúng. '
+          'Mỗi câu đúng, nhân vật nhảy lên một bậc. Trả lời càng nhanh càng được nhiều điểm.\n\n'
+          '⏳ Quỹ thời gian: mỗi câu có thời gian riêng (thanh nhỏ). Trả lời đúng sớm thì thời gian dư '
+          'được cộng vào quỹ. Quá thời gian riêng thì quỹ bị trừ dần. Lên level được +5 giây, thăng hạng '
+          'được +20 giây. Trả lời sai hoặc quỹ về 0 là kết thúc — trừ khi dùng ⏱️ Thêm giờ (+15 giây).\n\n'
           'Có 7 hạng: Tân Binh, Đồng, Bạc, Vàng, Bạch Kim, Kim Cương, Huyền Thoại. Hạng càng cao thì số '
           'càng lớn và thời gian trả lời càng ngắn. Đạt đủ level và điểm trong một ván để thăng hạng.\n\n'
           'Mỗi ván dùng 1 lượt chơi ❤️. Lượt chơi tự hồi 1 lượt mỗi 30 phút (tối đa 3).',
@@ -130,6 +132,25 @@ const _vi = <String, String>{
   'overtakenBy': '🔥 {name} vừa vượt kỷ lục của bạn: {rank} – {score} điểm!',
   'revenge': 'Phục thù!',
   'version': 'Phiên bản {v}',
+  'outOfTimeTitle': 'Hết giờ rồi!',
+  'outOfTimeHave': 'Dùng ⏱️ Thêm giờ để có thêm {s} giây và chơi tiếp?\nBạn đang có {n} vật phẩm.',
+  'outOfTimeNone': 'Bạn đã hết ⏱️ Thêm giờ. Xem quảng cáo để nhận 1 vật phẩm và chơi tiếp?',
+  'endGame': 'Kết thúc',
+  'useExtra': 'Dùng (+{s} giây)',
+  'adForExtra': 'Xem quảng cáo',
+  'shop': 'Cửa hàng',
+  'extraTimeName': 'Thêm giờ',
+  'extraTimeDesc': 'Khi quỹ thời gian ⏳ về 0, dùng vật phẩm này để có thêm {s} giây và chơi tiếp.',
+  'youHave': 'Bạn đang có: {n}',
+  'watchAdGet': 'Xem quảng cáo (+1)',
+  'adLeftToday': 'Còn {n}/{max} lượt hôm nay',
+  'adLimitReached': 'Hết lượt xem quảng cáo hôm nay, mai quay lại nhé!',
+  'gotExtra': 'Bạn nhận được 1 ⏱️ Thêm giờ!',
+  'buyPack': '{n} vật phẩm',
+  'comingSoon': 'Sắp có',
+  'buyNote': 'Mua bằng tiền sẽ có khi game phát hành trên Google Play.',
+  'rankRange': '➕➖ trong phạm vi {add}',
+  'rankRangeMul': '➕➖ đến {add} · ✖️➗ đến {f}',
   'deleteAccount': 'Xóa tài khoản',
   'deleteTitle': 'Xóa tài khoản vĩnh viễn?',
   'deleteBody':
@@ -244,9 +265,11 @@ const _en = <String, String>{
   'syncNow': 'Sync now',
   'howToPlay': 'How to play',
   'howToPlayBody':
-      'Pick the missing number or sign (+ − × ÷) to complete the equation before time runs out. '
-          'Each correct answer makes your character jump one step. Faster answers earn more points. '
-          'Collect enough points to level up: bigger numbers, less time. A wrong answer or timeout ends the game!\n\n'
+      'Pick the missing number or sign (+ − × ÷) to complete the equation. '
+          'Each correct answer makes your character jump one step. Faster answers earn more points.\n\n'
+          '⏳ Time bank: each question has its own time (small bar). Answer early and the leftover time '
+          'goes into your bank. Go over and the bank drains. Level up for +5s, rank up for +20s. '
+          'A wrong answer or an empty bank ends the game — unless you use ⏱️ Extra Time (+15s).\n\n'
           'There are 7 ranks: Rookie, Bronze, Silver, Gold, Platinum, Diamond and Legend. Higher ranks have '
           'bigger numbers and less time per question. Reach the required level and score in one game to rank up.\n\n'
           'Each game uses 1 life ❤️. Lives refill by 1 every 30 minutes (up to 3).',
@@ -281,6 +304,25 @@ const _en = <String, String>{
   'overtakenBy': '🔥 {name} just beat your record: {rank} – {score} points!',
   'revenge': 'Take it back!',
   'version': 'Version {v}',
+  'outOfTimeTitle': "Time's up!",
+  'outOfTimeHave': 'Use ⏱️ Extra Time to get {s} more seconds and keep playing?\nYou have {n}.',
+  'outOfTimeNone': 'You are out of ⏱️ Extra Time. Watch an ad to get 1 and keep playing?',
+  'endGame': 'End game',
+  'useExtra': 'Use (+{s}s)',
+  'adForExtra': 'Watch an ad',
+  'shop': 'Shop',
+  'extraTimeName': 'Extra Time',
+  'extraTimeDesc': 'When your time bank ⏳ hits 0, use this to get {s} more seconds and keep playing.',
+  'youHave': 'You have: {n}',
+  'watchAdGet': 'Watch an ad (+1)',
+  'adLeftToday': '{n}/{max} left today',
+  'adLimitReached': 'No more ads today — come back tomorrow!',
+  'gotExtra': 'You got 1 ⏱️ Extra Time!',
+  'buyPack': '{n} items',
+  'comingSoon': 'Coming soon',
+  'buyNote': 'Purchases will be available when the game is released on Google Play.',
+  'rankRange': '➕➖ up to {add}',
+  'rankRangeMul': '➕➖ up to {add} · ✖️➗ up to {f}',
   'deleteAccount': 'Delete account',
   'deleteTitle': 'Delete your account forever?',
   'deleteBody':

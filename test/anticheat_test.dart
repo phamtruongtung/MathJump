@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:math_jump/game/question.dart';
+import 'package:math_jump/game/rank.dart';
 import 'package:math_jump/models/game_result.dart';
 import 'package:math_jump/services/cloud_service.dart';
 
@@ -10,7 +11,7 @@ import 'package:math_jump/services/cloud_service.dart';
 GameResult simulate(Random rng, {required int rank, required int answers, required bool fast}) {
   var level = 1, score = 0, levelPoints = 0, ms = 0;
   for (var i = 0; i < answers; i++) {
-    final limit = LevelConfig(level, rank: rank).timeLimit;
+    final limit = kRanks[rank].questionTime(1.5, level);
     final used = fast ? 0.05 : rng.nextDouble(); // tỉ lệ thời gian đã dùng
     ms += (limit * 1000 * used).round() + 300;
     final gain = 10 + ((1 - used) * 5).round();

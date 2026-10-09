@@ -52,6 +52,28 @@ class Question {
 
   bool sameAs(Question o) =>
       a == o.a && b == o.b && c == o.c && op == o.op && missing == o.missing;
+
+  /// Độ khó ước lượng (giây suy nghĩ của một người lớn bình thường, chưa tính
+  /// thời gian bấm): tăng theo số chữ số của phép cộng trừ và độ lớn thừa số
+  /// nhân chia. Dùng để tính thời gian riêng của câu — giống mô hình trong
+  /// tools/simulate_timebank.js.
+  double get difficulty {
+    double d = 0;
+    switch (op) {
+      case Op.add:
+      case Op.sub:
+        final n = op == Op.add ? c : a;
+        final digits = n <= 0 ? 1 : n.toString().length;
+        d = 0.8 + 0.7 * (digits - 1) + (op == Op.sub ? 0.3 : 0);
+      case Op.mul:
+      case Op.div:
+        final f = op == Op.mul ? max(a, b) : max(b, c);
+        d = f <= 5 ? 1.0 : f <= 10 ? 1.4 : f <= 12 ? 2.0 : 2.5 + (f - 12) * 0.5;
+        if (op == Op.div) d += 0.4;
+    }
+    if (isOperator) d += 0.4;
+    return d;
+  }
 }
 
 /// Độ khó của một level trong một hạng: phép tính, phạm vi số, thời gian và
@@ -79,8 +101,9 @@ class LevelConfig {
   int get factorMin => _r.factorMin;
   int get factorMax => _r.factorMaxAt(level);
 
-  /// Số giây cho mỗi câu.
-  double get timeLimit => _r.timeFor(level);
+  /// Thời gian riêng (giây) cho câu hỏi [q]: tùy độ khó của câu, tốc độ chuẩn
+  /// của hạng và level. Trả lời đúng sớm hơn thì phần dư cộng vào quỹ thời gian.
+  double timeFor(Question q) => _r.questionTime(q.difficulty, level);
 
   /// Điểm cần tích lũy trong level này để lên level kế tiếp: 30, 40, 50, ...
   int get pointsToNext => 30 + (level - 1) * 10;

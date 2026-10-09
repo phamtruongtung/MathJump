@@ -10,8 +10,7 @@ class Rank {
     required this.emoji,
     required this.key,
     required this.color,
-    required this.startTime,
-    required this.endTime,
+    required this.speed,
     required this.addStart,
     required this.addEnd,
     required this.factorMin,
@@ -32,9 +31,10 @@ class Rank {
   final String key;
   final Color color;
 
-  /// Số giây mỗi câu ở level 1 và mức thấp nhất.
-  final double startTime;
-  final double endTime;
+  /// "Tốc độ chuẩn" của hạng: thời gian riêng mỗi câu = (1 + độ khó câu) ×
+  /// speed × hệ số level. Hạng càng cao, speed càng nhỏ (ít thời gian hơn).
+  /// Các con số được chọn bằng mô phỏng (tools/simulate_timebank.js).
+  final double speed;
 
   /// Phạm vi cộng/trừ: kết quả lớn nhất ở level 1 và ở level cao.
   final int addStart;
@@ -62,7 +62,14 @@ class Rank {
 
   double _progress(int level) => min(1.0, (level - 1) / rampLevels);
 
-  double timeFor(int level) => startTime - (startTime - endTime) * _progress(level);
+  /// Thời gian riêng (giây) cho một câu có độ khó [difficulty] ở [level]:
+  /// siết 25% từ level 1 → 20, sau đó mỗi level siết thêm 3% (người giỏi
+  /// cũng không sống mãi), tối thiểu 1,2 giây.
+  double questionTime(double difficulty, int level) {
+    var k = 1 - 0.25 * _progress(level);
+    if (level > rampLevels + 1) k *= pow(0.97, level - rampLevels - 1);
+    return max(1.2, (1 + difficulty) * speed * k);
+  }
 
   int addMaxAt(int level) => (addStart + (addEnd - addStart) * _progress(level)).round();
 
@@ -87,40 +94,40 @@ class Rank {
 const _never = 1 << 20;
 
 const kRanks = <Rank>[
-  // Tân Binh: chỉ cộng trừ trong phạm vi 10 → 50, thời gian rộng rãi.
+  // Tân Binh: chỉ cộng trừ trong phạm vi 10 → 50.
   Rank(index: 0, emoji: '🐣', key: 'rank_0', color: Color(0xFF51CF66),
-      startTime: 40, endTime: 20,
+      speed: 4.0,
       addStart: 10, addEnd: 50, factorMin: 2, factorStart: 2, factorEnd: 2,
       weights: [50, 50, 0, 0], subFrom: 2, mulFrom: _never, divFrom: _never,
       promoteLevel: 8, promoteScore: 500),
   // Lớp 1–3: cộng trừ trong 10 → 100, bảng cửu chương 2–9.
   Rank(index: 1, emoji: '🥉', key: 'rank_1', color: Color(0xFFCD7F32),
-      startTime: 30, endTime: 15,
+      speed: 2.4,
       addStart: 10, addEnd: 100, factorMin: 2, factorStart: 5, factorEnd: 9,
       weights: [40, 40, 12, 8], subFrom: 2, mulFrom: 4, divFrom: 6,
       promoteLevel: 10, promoteScore: 700),
   Rank(index: 2, emoji: '🥈', key: 'rank_2', color: Color(0xFF8E9AAF),
-      startTime: 20, endTime: 10,
+      speed: 1.8,
       addStart: 20, addEnd: 200, factorMin: 2, factorStart: 9, factorEnd: 10,
       weights: [35, 35, 18, 12], mulFrom: 2, divFrom: 3,
       promoteLevel: 12, promoteScore: 1000),
   Rank(index: 3, emoji: '🥇', key: 'rank_3', color: Color(0xFFF2B705),
-      startTime: 15, endTime: 8,
+      speed: 1.4,
       addStart: 50, addEnd: 500, factorMin: 2, factorStart: 10, factorEnd: 12,
       weights: [30, 30, 22, 18], mulFrom: 1, divFrom: 1,
       promoteLevel: 14, promoteScore: 1300),
   Rank(index: 4, emoji: '💠', key: 'rank_4', color: Color(0xFF3BC9DB),
-      startTime: 12, endTime: 6,
+      speed: 1.15,
       addStart: 100, addEnd: 1000, factorMin: 3, factorStart: 12, factorEnd: 15,
       weights: [25, 25, 25, 25], mulFrom: 1, divFrom: 1,
       promoteLevel: 16, promoteScore: 1650),
   Rank(index: 5, emoji: '💎', key: 'rank_5', color: Color(0xFF7950F2),
-      startTime: 10, endTime: 5,
+      speed: 0.95,
       addStart: 200, addEnd: 2000, factorMin: 4, factorStart: 15, factorEnd: 20,
       weights: [25, 25, 25, 25], mulFrom: 1, divFrom: 1,
       promoteLevel: 18, promoteScore: 2050),
   Rank(index: 6, emoji: '👑', key: 'rank_6', color: Color(0xFFE8590C),
-      startTime: 8, endTime: 4,
+      speed: 0.85,
       addStart: 500, addEnd: 5000, factorMin: 6, factorStart: 20, factorEnd: 25,
       weights: [25, 25, 25, 25], mulFrom: 1, divFrom: 1),
 ];

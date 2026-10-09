@@ -37,6 +37,18 @@ class LocalStore {
   bool get tutorialSeen => _p.getBool('tutorialSeen') ?? false;
   Future<void> setTutorialSeen() => _p.setBool('tutorialSeen', true);
 
+  // ---- Vật phẩm ⏱️ Thêm giờ (dùng chung cho cả máy) ----
+  int get extraTimes => _p.getInt('item_extraTime') ?? 0;
+  Future<void> setExtraTimes(int v) => _p.setInt('item_extraTime', v);
+
+  /// Số lần đã nhận Thêm giờ bằng quảng cáo trong ngày [day] ("yyyy-mm-dd").
+  int adExtraCount(String day) =>
+      _p.getString('adExtraDay') == day ? (_p.getInt('adExtraCount') ?? 0) : 0;
+  Future<void> setAdExtraCount(String day, int v) async {
+    await _p.setString('adExtraDay', day);
+    await _p.setInt('adExtraCount', v);
+  }
+
   // ---- Lượt chơi (dùng chung cho cả máy) ----
   int? get lives => _p.getInt('lives');
   Future<void> setLives(int v) => _p.setInt('lives', v);

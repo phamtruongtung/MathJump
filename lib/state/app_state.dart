@@ -150,6 +150,46 @@ class AppState extends ChangeNotifier {
   /// Đánh dấu đã xem (gọi ngay khi mở, không notify vì có thể đang build).
   void markTutorialSeen() => unawaited(store.setTutorialSeen());
 
+  // ---------------- Vật phẩm ⏱️ Thêm giờ ----------------
+
+  /// Mỗi vật phẩm cộng thêm bao nhiêu giây khi quỹ thời gian về 0.
+  static const extraTimeSeconds = 15;
+
+  /// Số lần tối đa nhận Thêm giờ bằng xem quảng cáo mỗi ngày.
+  static const adExtraPerDay = 3;
+
+  int get extraTimes => store.extraTimes;
+
+  static String _today() {
+    final d = DateTime.now();
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  int get adExtraLeftToday => max(0, adExtraPerDay - store.adExtraCount(_today()));
+
+  void addExtraTimes(int n) {
+    unawaited(store.setExtraTimes(extraTimes + n));
+    notifyListeners();
+  }
+
+  /// Dùng 1 vật phẩm. false nếu không còn.
+  bool useExtraTime() {
+    if (extraTimes <= 0) return false;
+    unawaited(store.setExtraTimes(extraTimes - 1));
+    notifyListeners();
+    return true;
+  }
+
+  /// Ghi nhận đã xem quảng cáo để nhận 1 vật phẩm. false nếu hết lượt hôm nay.
+  bool claimAdExtraTime() {
+    final day = _today();
+    final used = store.adExtraCount(day);
+    if (used >= adExtraPerDay) return false;
+    unawaited(store.setAdExtraCount(day, used + 1));
+    addExtraTimes(1);
+    return true;
+  }
+
   // ---------------- Lượt chơi ----------------
 
   int get lives {

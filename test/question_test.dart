@@ -76,17 +76,38 @@ void main() {
     expect(const LevelConfig(1, rank: 3).ops, Op.values);
   });
 
-  test('ranks: lower rank gives more time, promotion is reachable', () {
-    expect(const LevelConfig(1, rank: 0).timeLimit, 40);
-    expect(const LevelConfig(1, rank: 1).timeLimit, 30);
-    expect(const LevelConfig(1, rank: 2).timeLimit, 20);
+  test('question difficulty follows the numbers in the question', () {
+    Question q(int a, int b, int c, Op op, Slot missing) =>
+        Question(a: a, b: b, c: c, op: op, missing: missing, choices: const []);
+    expect(q(4, 5, 9, Op.add, Slot.a).difficulty, closeTo(0.8, 1e-9));
+    expect(q(347, 586, 933, Op.add, Slot.c).difficulty, closeTo(2.2, 1e-9));
+    expect(q(17, 23, 391, Op.mul, Slot.c).difficulty, closeTo(8.0, 1e-9));
+    expect(q(4, 5, 9, Op.add, Slot.op).difficulty, closeTo(1.2, 1e-9)); // điền dấu
+    expect(q(12, 4, 3, Op.div, Slot.b).difficulty, closeTo(1.4, 1e-9));
+  });
+
+  test('time bank: per-question time by rank, level and difficulty', () {
+    // Ví dụ trong bảng đã thống nhất: Tân Binh level 1, "4 + ? = 9" → 7,2 giây.
+    expect(kRanks[0].questionTime(0.8, 1), closeTo(7.2, 1e-9));
+    expect(kRanks[0].questionTime(0.8, 20), closeTo(5.4, 1e-9));
     for (var r = 0; r < kRanks.length; r++) {
-      for (var l = 1; l < 40; l++) {
-        final t = LevelConfig(l, rank: r).timeLimit;
-        expect(t, lessThanOrEqualTo(LevelConfig(l - 1 < 1 ? 1 : l - 1, rank: r).timeLimit));
-        expect(t, greaterThanOrEqualTo(kRanks[r].endTime));
-        if (r > 0) expect(t, lessThan(LevelConfig(l, rank: r - 1).timeLimit));
+      for (final d in [0.8, 1.5, 2.2, 4.0, 8.0]) {
+        for (var l = 1; l < 60; l++) {
+          final t = kRanks[r].questionTime(d, l);
+          expect(t, greaterThanOrEqualTo(1.2));
+          expect(t, lessThanOrEqualTo(kRanks[r].questionTime(d, l == 1 ? 1 : l - 1)));
+          if (r > 0) expect(t, lessThanOrEqualTo(kRanks[r - 1].questionTime(d, l)));
+          // Câu khó hơn có nhiều thời gian hơn (trừ khi đã chạm mức tối thiểu).
+          expect(kRanks[r].questionTime(d + 1, l), greaterThanOrEqualTo(t));
+        }
       }
+      // Sau level 20 vẫn tiếp tục siết (người giỏi không sống mãi).
+      expect(kRanks[r].questionTime(2.2, 40), lessThan(kRanks[r].questionTime(2.2, 20)));
+    }
+  });
+
+  test('ranks: promotion is reachable', () {
+    for (var r = 0; r < kRanks.length; r++) {
       final rank = kRanks[r];
       if (rank.isTop) continue;
       // Điểm tối thiểu (10/câu) và tối đa (15/câu) khi vừa chạm level thăng hạng.
@@ -101,7 +122,6 @@ void main() {
 
   test('difficulty increases with level', () {
     expect(const LevelConfig(5).addMax, greaterThan(const LevelConfig(1).addMax));
-    expect(const LevelConfig(5).timeLimit, lessThan(const LevelConfig(1).timeLimit));
     expect(const LevelConfig(5).pointsToNext, greaterThan(const LevelConfig(1).pointsToNext));
   });
 }

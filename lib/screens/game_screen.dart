@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +9,7 @@ import '../game/question.dart';
 import '../game/rank.dart';
 import '../l10n/strings.dart';
 import '../models/game_result.dart';
+import '../services/ad_service.dart';
 import '../services/sound_service.dart';
 import '../state/app_state.dart';
 import '../theme.dart';
@@ -26,7 +28,25 @@ class _GameScreenState extends State<GameScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   final _rng = Random();
   final _watch = Stopwatch();
-  late final AnimationController _timer;
+
+  // ---- Quỹ thời gian ----
+  // Mỗi câu có thời gian riêng [_qTime]. Trong thời gian riêng, quỹ không bị
+  // trừ. Trả lời đúng: phần dư cộng vào quỹ. Quá thời gian riêng: trừ dần vào
+  // quỹ. Quỹ về 0 → dùng ⏱️ Thêm giờ hoặc thua. Thông số chọn bằng mô phỏng
+  // (tools/simulate_timebank.js).
+  static const _startBank = 20.0;
+  static const _levelBonus = 5.0;
+  static const _rankBonus = 20.0;
+
+  late final Ticker _ticker = createTicker(_onTick);
+  Duration? _lastTick;
+  bool _clockRunning = false;
+  bool _outOfTimeOpen = false;
+  double _qTime = 1;
+  double _bank = _startBank; // quỹ lúc bắt đầu câu hiện tại
+  final _qElapsed = ValueNotifier<double>(0); // giây đã dùng cho câu hiện tại
+
+  double get _bankLeft => _bank - max(0.0, _qElapsed.value - _qTime);
 
   late final AppState _app = context.read<AppState>();
 
@@ -58,19 +78,17 @@ class _GameScreenState extends State<GameScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _timer = AnimationController(vsync: this)
-      ..addStatusListener((st) {
-        if (st == AnimationStatus.completed && !_over) _gameOver('timeUp');
-      });
     _q = QuestionGenerator.generate(_level, _rng, rank: _rank);
     _watch.start();
-    _startTimer();
+    _startQuestionClock();
+    _ticker.start();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _timer.dispose();
+    _ticker.dispose();
+    _qElapsed.dispose();
     super.dispose();
   }
 
@@ -80,10 +98,107 @@ class _GameScreenState extends State<GameScreen>
     if (state != AppLifecycleState.resumed) _pause();
   }
 
-  void _startTimer() {
-    _timer.duration = Duration(
-        milliseconds: (LevelConfig(_level, rank: _rank).timeLimit * 1000).round());
-    _timer.forward(from: 0);
+  void _startQuestionClock() {
+    _qTime = LevelConfig(_level, rank: _rank).timeFor(_q);
+    _qElapsed.value = 0;
+    _lastTick = null;
+    _clockRunning = true;
+  }
+
+  void _onTick(Duration now) {
+    final dt = _lastTick == null ? 0.0 : (now - _lastTick!).inMicroseconds / 1e6;
+    _lastTick = now;
+    if (!_clockRunning || _over || _paused) return;
+    _qElapsed.value += dt;
+    if (_bankLeft <= 0) _onOutOfTime();
+  }
+
+  /// Quỹ về 0: mời dùng ⏱️ Thêm giờ (hoặc xem quảng cáo để nhận), không thì thua.
+  Future<void> _onOutOfTime() async {
+    if (_outOfTimeOpen || _over) return;
+    _outOfTimeOpen = true;
+    _clockRunning = false;
+    _watch.stop();
+    HapticFeedback.heavyImpact();
+    var extended = false;
+    while (mounted && !_over) {
+      final action = await _askExtraTime();
+      if (!mounted) return;
+      if (action == 'use' && _app.useExtraTime()) {
+        extended = true;
+        break;
+      }
+      if (action == 'ad') {
+        final ok = await showRewardedAd(context);
+        if (!mounted) return;
+        if (ok && _app.claimAdExtraTime() && _app.useExtraTime()) {
+          extended = true;
+          break;
+        }
+        continue; // không xem được quảng cáo: hỏi lại
+      }
+      break; // 'end'
+    }
+    _outOfTimeOpen = false;
+    if (!mounted || _over) return;
+    if (!extended) {
+      _gameOver('timeUp');
+      return;
+    }
+    // Quỹ còn đúng 15 giây, chơi tiếp câu hiện tại.
+    setState(() => _bank = (_qElapsed.value - _qTime) + AppState.extraTimeSeconds);
+    _app.sound.play(Sfx.levelup);
+    _watch.start();
+    _lastTick = null;
+    _clockRunning = !_paused;
+  }
+
+  Future<String> _askExtraTime() async {
+    final have = _app.extraTimes;
+    final adLeft = _app.adExtraLeftToday;
+    final r = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (c) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text('⏰ ${c.tr('outOfTimeTitle')}',
+              textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w900)),
+          content: Text(
+            c.tr(have > 0 ? 'outOfTimeHave' : 'outOfTimeNone',
+                {'n': have, 's': AppState.extraTimeSeconds}),
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsOverflowDirection: VerticalDirection.up,
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, 'end'), child: Text(c.tr('endGame'))),
+            if (have > 0)
+              SizedBox(
+                height: 50,
+                child: BubblyButton(
+                  color: AppColors.green,
+                  fontSize: 16,
+                  onPressed: () => Navigator.pop(c, 'use'),
+                  child: Text('⏱️ ${c.tr('useExtra', {'s': AppState.extraTimeSeconds})}'),
+                ),
+              )
+            else if (adLeft > 0)
+              SizedBox(
+                height: 50,
+                child: BubblyButton(
+                  color: AppColors.green,
+                  fontSize: 16,
+                  onPressed: () => Navigator.pop(c, 'ad'),
+                  child: Text('📺 ${c.tr('adForExtra')}'),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+    return r ?? 'end';
   }
 
   void _nextQuestion() {
@@ -91,11 +206,12 @@ class _GameScreenState extends State<GameScreen>
       _q = QuestionGenerator.generate(_level, _rng, rank: _rank, avoid: _q);
       _picked = null;
     });
-    _startTimer();
+    _startQuestionClock();
   }
 
   void _onPick(String choice) {
     if (_over || _paused || _picked != null) return;
+    _clockRunning = false;
     if (choice != _q.answer) {
       HapticFeedback.heavyImpact();
       setState(() => _picked = choice);
@@ -105,12 +221,15 @@ class _GameScreenState extends State<GameScreen>
 
     HapticFeedback.lightImpact();
     _app.sound.play(Sfx.correct);
-    _timer.stop();
-    final gain = 10 + ((1 - _timer.value) * 5).round(); // nhanh thì thêm tối đa 5 điểm
+    final used = _qElapsed.value;
+    // Nhanh thì thêm tối đa 5 điểm.
+    final gain = 10 + (max(0.0, _qTime - used) / _qTime * 5).round();
     final cfg = LevelConfig(_level, rank: _rank);
     var levelUp = false;
     setState(() {
       _picked = choice;
+      // Phần thời gian riêng còn dư cộng vào quỹ (quá giờ thì đã bị trừ).
+      _bank += _qTime - used;
       _score += gain;
       _lastGain = gain;
       _levelPoints += gain;
@@ -120,6 +239,7 @@ class _GameScreenState extends State<GameScreen>
         _levelPoints -= cfg.pointsToNext;
         _level++;
         levelUp = true;
+        _bank += _levelBonus;
       }
     });
 
@@ -138,13 +258,15 @@ class _GameScreenState extends State<GameScreen>
         _score = 0;
         _levelPoints = 0;
         _rankCorrect = 0;
+        _bank += _rankBonus;
       });
       final r = rankAt(next);
-      _showBanner('${r.emoji} ${context.tr('rankUp', {'rank': context.tr(r.key)})}');
+      _showBanner(
+          '${r.emoji} ${context.tr('rankUp', {'rank': context.tr(r.key)})} +${_rankBonus.round()}s');
     } else if (levelUp) {
       HapticFeedback.mediumImpact();
       Future.delayed(const Duration(milliseconds: 120), () => _app.sound.play(Sfx.levelup));
-      _showBanner(context.tr('levelUp', {'level': _level}));
+      _showBanner('${context.tr('levelUp', {'level': _level})} +${_levelBonus.round()}s');
     }
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted || _over) return;
@@ -165,7 +287,7 @@ class _GameScreenState extends State<GameScreen>
 
   void _gameOver(String reason) {
     if (_over) return;
-    _timer.stop();
+    _clockRunning = false;
     _watch.stop();
     HapticFeedback.vibrate();
     _app.sound.play(Sfx.wrong);
@@ -200,7 +322,7 @@ class _GameScreenState extends State<GameScreen>
 
   void _pause() {
     if (_over || _paused || !mounted) return;
-    _timer.stop();
+    _clockRunning = false;
     _watch.stop();
     setState(() => _paused = true);
   }
@@ -208,12 +330,14 @@ class _GameScreenState extends State<GameScreen>
   void _resume() {
     if (!_paused) return;
     setState(() => _paused = false);
+    _lastTick = null;
+    if (_outOfTimeOpen) return; // hộp "Hết giờ" đang mở: chờ người chơi chọn
     _watch.start();
     if (_pendingNext) {
       _pendingNext = false;
       _nextQuestion();
     } else if (_picked == null) {
-      _timer.forward();
+      _clockRunning = true;
     }
   }
 
@@ -256,7 +380,7 @@ class _GameScreenState extends State<GameScreen>
                 _topBar(),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _TimerBar(controller: _timer),
+                  child: _timeBars(),
                 ),
                 Expanded(
                   flex: 5,
@@ -331,8 +455,66 @@ class _GameScreenState extends State<GameScreen>
             ),
           ),
         const SizedBox(width: 8),
+        Pill(text: '⏱️×${context.select<AppState, int>((s) => s.extraTimes)}',
+            color: AppColors.blue, fontSize: 15),
+        const SizedBox(width: 6),
         Pill(text: '⭐ $_score', color: AppColors.orange),
       ]),
+    );
+  }
+
+  /// Quỹ thời gian ⏳ (lớn) + thanh thời gian riêng của câu hiện tại.
+  Widget _timeBars() {
+    return ValueListenableBuilder<double>(
+      valueListenable: _qElapsed,
+      builder: (context, elapsed, _) {
+        final qLeft = max(0.0, _qTime - elapsed);
+        final draining = elapsed > _qTime && _picked == null && !_over;
+        final bankLeft = max(0.0, _bank - max(0.0, elapsed - _qTime));
+        final low = draining || bankLeft < 5;
+        final frac = (qLeft / _qTime).clamp(0.0, 1.0);
+        return Row(children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: low ? AppColors.red : AppColors.purple,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: Text('⏳ ${bankLeft.toStringAsFixed(1)}s',
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Container(
+              height: 14,
+              alignment: Alignment.centerLeft,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: FractionallySizedBox(
+                widthFactor: frac,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Color.lerp(AppColors.orange, AppColors.green, frac),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 38,
+            child: Text(qLeft.toStringAsFixed(1),
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+          ),
+        ]);
+      },
     );
   }
 
@@ -471,53 +653,6 @@ class _GameScreenState extends State<GameScreen>
           ]),
         ),
       ),
-    );
-  }
-}
-
-class _TimerBar extends StatelessWidget {
-  const _TimerBar({required this.controller});
-  final AnimationController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (_, __) {
-        final remaining = 1 - controller.value;
-        final secs = (controller.duration?.inMilliseconds ?? 0) * remaining / 1000;
-        final color = Color.lerp(AppColors.red, AppColors.green, remaining)!;
-        return Row(children: [
-          const Text('⏰', style: TextStyle(fontSize: 20)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              height: 18,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: remaining.clamp(0.0, 1.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 40,
-            child: Text(secs.toStringAsFixed(1),
-                textAlign: TextAlign.right,
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-          ),
-        ]);
-      },
     );
   }
 }
